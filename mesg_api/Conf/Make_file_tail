@@ -1,0 +1,16 @@
+
+warnings: 
+	$(CC) -Wall -g -c $INC_FLAGS udf_spread.c
+
+install:
+	cp -rp message_api.so /usr/local/lib/
+
+clean:
+	rm -f message_api.so udf_spread.o
+
+distclean:
+	rm -f Makefile
+	( cd Conf ; make clean )
+
+
+

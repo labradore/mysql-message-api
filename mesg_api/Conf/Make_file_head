@@ -1,0 +1,2 @@
+LIB_FLAGS = -ltspread 
+INC_FLAGS = -I/Users/jdd/mysql-src/mysql-5.0.15/include 
