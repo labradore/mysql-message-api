@@ -15,7 +15,7 @@
        Blocks listening for messages. Returns a message, or NULL as an exception
     leave_mesg_group(int handle) 
       Leave group and disconnect.
-    mesg_track_memberships(CHAR group)
+    track_memberships(CHAR group)
       Track membership of a group.  Returns a handle that can be disconnected 
       using leave_mesg_group().
     mesg_status([INT handle])
@@ -277,7 +277,7 @@ my_bool send_mesg_init(UDF_INIT *initid, UDF_ARGS *args, char *err_msg)
             == GROUP_NOT_FOUND)) 
         {
           snprintf(err_msg,MYSQL_ERRMSG_SIZE,
-              "You must call mesg_track_memberships(\"%s\") before "
+              "You must call track_memberships(\"%s\") before "
               "sending a guaranteed message to a group member.",args->args[0]);
           return 1;
         }
@@ -675,7 +675,7 @@ char * recv_mesg(UDF_INIT *initid, UDF_ARGS *args, char *result,
 }
 
 
-my_bool mesg_track_memberships_init(UDF_INIT *initid, UDF_ARGS *args, char *err_msg)
+my_bool track_memberships_init(UDF_INIT *initid, UDF_ARGS *args, char *err_msg)
 {
   int s, err;
 
@@ -704,7 +704,7 @@ my_bool mesg_track_memberships_init(UDF_INIT *initid, UDF_ARGS *args, char *err_
 }
 
 
-long long mesg_track_memberships(UDF_INIT *initid, UDF_ARGS *args, 
+long long track_memberships(UDF_INIT *initid, UDF_ARGS *args, 
                           char *is_null, char *error)
 {
   register int err = 0;

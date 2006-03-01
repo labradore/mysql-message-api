@@ -17,7 +17,7 @@ run a Spread daemon on each MySQL Server.
 
 /* 
  RECV_POOL_SIZE defines a limit on the possible number of simultaneously 
- running mesg_recv() and mesg_track_memberships() calls in MySQL.
+ running mesg_recv() and track_memberships() calls in MySQL.
  SEND_POOL_SIZE does not impose a limit on the number of simultaneous 
  sends, though you may get better concurrency (and will use more memory) 
  by increasing it.
