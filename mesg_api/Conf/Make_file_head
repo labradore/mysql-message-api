@@ -1,2 +1,0 @@
-LIB_FLAGS = -ltspread 
-INC_FLAGS = -I/usr/local/include/mysql 
