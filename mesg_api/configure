@@ -16,7 +16,7 @@ usage () {
  echo "This is the configuration script for the MySQL Message API."
  echo
  echo "Building the Message API requires: "
- echo "      A MySQL server source tree configured for this system."
+ echo "      An installed copy of MySQL, including header files."
  echo "      An installed copy of Spread, including both headers and libraries."
  echo 
  echo "MySQL source code is available from www.mysql.com."
