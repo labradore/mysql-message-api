@@ -804,30 +804,40 @@ char * mesg_status(UDF_INIT *initid, UDF_ARGS *args, char *result,
                  unsigned long *length, char *is_null, char *error)
 {
   int sz = 0;
-  long long slot = -1 ;
+  long long slot;
   char *p;
   
   p = initid->ptr;
-  if(args->arg_count == 1)
+  
+  if(args->arg_count == 1) {
     slot =  *((long long *) args->args[0]);
-      
-  if(slot == -1) {
+    if(slot < 0) {
+      *error = 1;
+      return NULL;
+    }
+    else if(slot < SEND_POOL_SIZE) {
+      status__send_pool(p, &sz, slot);
+      status__outboxes(p, &sz, slot);
+    }
+    else if(slot < POOL_SIZE) {
+      if(spread_pool[slot].status == SPREAD_CTX_TRACK_MEMBERSHIPS)
+        status__group_table(p, &sz, slot);
+      else 
+        status__recv_pool(p, &sz, slot) ;
+    }
+    else {
+      *error = 1;
+      return NULL;
+    }
+  }
+  else {    /* ALL SLOTS */
     status__global(p, &sz);
     status__send_pool(p, &sz, -1);
     status__outboxes(p, &sz, -1);
     status__recv_pool(p, &sz, -1);
     status__group_table(p, &sz,-1);
   }
-  else {
-    if(slot < SEND_POOL_SIZE) {
-      status__send_pool(p, &sz, slot);
-      status__outboxes(p, &sz, slot);
-    }
-    else if(spread_pool[slot].status == SPREAD_CTX_TRACK_MEMBERSHIPS)
-      status__group_table(p, &sz, slot);
-    else 
-      status__recv_pool(p, &sz, slot) ;
-  }
+
   *length = sz;
   return initid->ptr;
 }
