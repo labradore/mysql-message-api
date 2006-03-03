@@ -1146,7 +1146,7 @@ void * memberships_thread(void * a) {
       i = rcv = 0;
       do {
         rcv = memberships_purge_old_lists(slot);
-        if(rcv) my_sleep(1);
+        if(rcv) sleep(1);
         i++;
       } while(rcv && (i < 60));   
       if(i == 60) {
