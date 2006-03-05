@@ -10,7 +10,11 @@ BUGS IN C CODE:
  ---
 LINKER BUGS:
 14 - In the message API code, I can use MySQL's internal thread routines -- but
-libtspread is still going directly use libpthread code.
+libtspread is still going to directly use libpthread code.
+15 - I have tested the UDF on FreeBSD and OS X, but still have not confirmed 
+that it links and runs correctly on Linux.  This is going to depend a great 
+deal on pthreads, and on the mysql include files being correct for the target
+system.
 
 BUGS IN BUILD & INSTALL SCRIPTS:
  ---
