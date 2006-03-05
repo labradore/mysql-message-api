@@ -7,8 +7,11 @@ BUGS IN C CODE:
 11 - Handling of common errors needs to be improved.  Example: what happens if the spread daemon crashes and restarts.
 12 - Many of the values that are configured at compile-time should be configurable at runtime.
 
-
+ ---
+LINKER BUGS:
+14 - In the message API code, I can use MySQL's internal thread routines -- but
+libtspread is still going directly use libpthread code.
 
 BUGS IN BUILD & INSTALL SCRIPTS:
  ---
-1 - It's not always correct to install the .so file in /usr/local/lib 
+13 - It's not always correct to install the .so file in /usr/local/lib 
