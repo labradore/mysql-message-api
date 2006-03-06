@@ -868,11 +868,20 @@ long long is_a_member( struct membership *memb, sequence_number seq, char *membe
     
     p = (char *) v->members;
     q = (char *) ( p + (MAX_GROUP_NAME * v->n_members));
-    
+
+    /* member could be a full private name, like "#user1#madison",
+	   which Spread will report to you.  Or it might just be "user1",
+	   which you have requested in SP_connect().  We accept either form,
+	   and we do this by:
+	     skipping over the first character of p (known to be a '#')
+		 skipping the first character if member if it is a '#'
+		 doing a leftmost-substring match: does "p" begin with "member"?
+    */
+	
+	if(*member == '#') member++;
+	
     while(p < q) 
     { 
-      // Ignore the first character of p; it's a hash mark. 
-      // And treat "member" as a prefix. 
       if(strncmp(p+1,member,strlen(member)) == 0) 
       {
           return_value = 1;
