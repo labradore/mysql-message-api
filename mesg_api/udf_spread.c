@@ -201,15 +201,13 @@ static char * spread_diagnostic(int e) {
    Don't create a loop or race condition where, after the spread daemon is
    bounced, you disconnect all of your newly established connections each time
    an old invalid one is discovered.
-   If slot is -1, it's a slot in the send pool.  (You may want to fix this
-   by reworking the initied->ptr in send_mesg()... )
 */
 
 void handle_spread_disconnect(int err, int slot) {
   SP_error(err);
   pthread_mutex_lock(&send_pool_mutex);
-  if(send_pool_is_initialized) 
-    send_pool_is_initialized = 0;
+    if(send_pool_is_initialized) 
+      send_pool_is_initialized = 0;
   pthread_mutex_unlock(&send_pool_mutex);
 }  
 
@@ -1018,7 +1016,7 @@ void * memberships_thread(void * a) {
   /* Create a membership structure.
      Rely on calloc() to initialize all fields to 0. */
   ctx->m = (struct membership *) calloc(1 , sizeof(struct membership));
-  if(!( msg && groups && ctx->m)) goto clean_up;
+  if(!( msg && groups && ctx->m)) goto exit_point_2;
   my_rwlock_init(& ctx->m->list_lock, NULL);
 
   group_table_op(OP_CREATE, & tracked_groups,slot, ctx->name.group);
@@ -1104,8 +1102,14 @@ void * memberships_thread(void * a) {
         continue;
       }
       else if(rcv == CONNECTION_CLOSED) {
-        /* To Do: */
-        /* try to reconnect and keep going, but eventually give up and exit */
+        /* 
+           We have become disconnected from the local Spread daemon.
+           It's probably dead. 
+           TO DO: set a flag here so that we can try to reconnect to Spread 
+           automatically when it comes back.
+        */
+        SP_error(rcv);
+        goto exit_point_1;
       }
       else {
         SP_error(rcv);
@@ -1143,43 +1147,47 @@ void * memberships_thread(void * a) {
       continue;
     }
     if( Is_self_leave(svctype)) 
-    {
-      /* Clean up and exit */
+      goto exit_point_1;
 
-      /* Some outboxes may be waiting for BOX_RECVD on -future- messages, 
-      so notify them all that we are closing down */
-      for(i = 0 ; i < SEND_POOL_SIZE ; i++) 
-        delivery_broker(BOX_CLOSED, & outboxes[i], slot, ctx->m->mesg_sequence + 1);
-
-      /*  memberships_purge_old_lists() returns the number of still-pending receipts */
-      i = rcv = 0;
-      do {
-        rcv = memberships_purge_old_lists(slot);
-        if(rcv) sleep(1);
-        i++;
-      } while(rcv && (i < 60));   
-      if(i == 60) {
-        fprintf(stderr,"- Message API: Memberships thread (handle %d).\n"
-                "- Timed out waiting for senders to pick up receipt%s for %d message%s;\n"
-                "- must exit without freeing memory.\n",
-                slot, (rcv == 1 ? "" : "s") , rcv , (rcv == 1 ? "" : "s"));
-        ctx->status = SPREAD_CTX_ZOMBIE;
-        pthread_exit(NULL);
-      }
-        
-      /* At this point only the most-recent membership list remains; free it now. */
-      ver = ctx->m->vers ;
-      ctx->m->vers = NULL;
-      free(ver->members);
-      free(ver);
-      break;
-    }
     else fprintf(stderr,"STRANGE MESSAGE %d %d \n",svctype,rcv);
+  }  /* while(1) */
+
+
+  exit_point_1:
+
+  /* Some outboxes may be waiting for BOX_RECVD on -future- messages, 
+  so notify them all that we are closing down */
+  for(i = 0 ; i < SEND_POOL_SIZE ; i++) 
+    delivery_broker(BOX_CLOSED, & outboxes[i], slot, ctx->m->mesg_sequence + 1);
+
+  /*  memberships_purge_old_lists() returns the number of still-pending receipts */
+  i = rcv = 0;
+  do {
+    rcv = memberships_purge_old_lists(slot);
+    if(rcv) sleep(1);
+    i++;
+  } while(rcv && (i < 60));   
+  if(i == 60) {
+    fprintf(stderr,"- Message API: Memberships thread (handle %d).\n"
+            "- Timed out waiting for senders to pick up receipt%s for %d message%s;\n"
+            "- must exit without freeing memory.\n",
+            slot, (rcv == 1 ? "" : "s") , rcv , (rcv == 1 ? "" : "s"));
+    ctx->status = SPREAD_CTX_ZOMBIE;
+    pthread_exit(NULL);
+  }
     
-  } 
-  
-  clean_up:
-     
+  /* At this point only the most-recent membership list remains; free it now. */
+  ver = ctx->m->vers ;
+  ctx->m->vers = NULL;
+  free(ver->members);
+  free(ver);
+
+   
+  exit_point_2:
+
+  if(UDF_DEBUG) 
+   fprintf(stderr, "Memberships thread exiting (handle %d; group: %s).\n",
+           slot,ctx->name.group);     
   group_table_op(OP_DELETE, & tracked_groups,slot,ctx->name.group);
   if(groups) free(groups);
   if(msg) free(msg);
