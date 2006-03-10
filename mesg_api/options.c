@@ -26,6 +26,8 @@ int binsearch(char *word, int len, option_list *kp, int n) {
 }
 
 
+#define skip_whitespace(p) while(*p && my_isspace(&my_charset_latin1,*p)) p++ 
+
 opt_parser_return parse_options( int n_opts, option_list *opts, char *s) {
 
   char *opt, *val, *r;
@@ -34,45 +36,36 @@ opt_parser_return parse_options( int n_opts, option_list *opts, char *s) {
 
   opt = s;
 
-  while(*opt) {
+  do {
     i = j = 0 ;
-
-    /* skip whitespace */
-    for ( ; *opt && my_isspace(&my_charset_latin1,*opt) ; opt++);
+    skip_whitespace(opt);
 
     /* the first word is the option name, extending from "p" for length "i" */
     for( val = opt; *val && my_isvar(&my_charset_latin1,*val) ; val++, i++);	
 
-    /* length zero means there was a special character in the wrong place */
-    if(i == 0)		return PARS_SYNTAX_ERROR;
-    
     /* The option is the string of length "i" beginning at "opt" */
+    if(i == 0)          return PARS_SYNTAX_ERROR;
     optidx = binsearch(opt, i, opts, n_opts);
-    if(optidx == -1) return PARS_ILLEGAL_OPTION;
-    
-    /* skip more whitespace */
-    for( ; *val && my_isspace(&my_charset_latin1,*val) ; val++ );
-    
+    if(optidx == -1)    return PARS_ILLEGAL_OPTION;
+        
     /* Next, there must be an equals sign */
-    if(*val != '=')	return PARS_SYNTAX_ERROR;
-    
-    /* Skip more whitespace */
-    for( val++ ; *val && my_isspace(&my_charset_latin1,*val); val++ );
-
-    /* Everything until the next NULL or comma or whitespace is the value */ 
+    skip_whitespace(val);
+    if(*val == '=') val++;
+    else                return PARS_SYNTAX_ERROR;
+    skip_whitespace(val);
+ 
+    /* Everything until the next comma or whitespace is the value */ 
     for( r = val ; *r && *r != ',' && (! my_isspace(&my_charset_latin1,*r)) ; r++, j++);
 
     /* The value is the string of length "j" beginning at "val" */
     opts[optidx].value = val;
     opts[optidx].value_len = j;
     
-    /* Skip more whitespace */
-    for( *r++ ; *r && my_isspace(&my_charset_latin1,*r); r++ );
-  
-    /* Keep going? */
-    if(*r != ',') break;
-  }
-  
-  return PARS_OK;
+    skip_whitespace(r);
+    opt = r+1;
+
+  } while(*r == ',');
+
+  if (*r == '\0') return PARS_OK;
+  return PARS_SYNTAX_ERROR;
 }
-    

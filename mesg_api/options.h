@@ -1,4 +1,4 @@
-#ifdef UNIT_TEST
+#if defined UNIT_TEST
 #include "harness.h"
 #else
 #include <my_global.h> 
@@ -7,7 +7,6 @@
 
 #include <string.h>
 
- 
 enum option_id {
   OPT_NAME = 1,
   OPT_GROUP,
@@ -18,7 +17,6 @@ typedef enum option_id          option_id;
 struct option_list {
   const char *    option;
   option_id       id;
-  const char *    def;
   char *          value;
   int             value_len;
 };
