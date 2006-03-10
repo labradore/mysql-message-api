@@ -1,3 +1,12 @@
+#ifdef UNIT_TEST
+#include "harness.h"
+#else
+#include <my_global.h> 
+#include <my_sys.h>
+#endif
+
+#include <string.h>
+
  
 enum option_id {
   OPT_NAME = 1,

@@ -1,7 +1,3 @@
-#include <my_global.h> 
-#include <my_sys.h>
-#include <string.h>
-
 #include "options.h"
 
 extern CHARSET_INFO my_charset_latin1;
