@@ -1,4 +1,5 @@
 #include "udf_spread.h"
+#include "options.h"
 
 /* This UDF file implements a reliable messaging API for MySQL.
 
