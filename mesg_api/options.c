@@ -1,24 +1,32 @@
-#include "options.h"
-#include <udf_spread.h>
+#include <my_global.h> 
 #include <my_sys.h>
+#include <string.h>
+
+#include "options.h"
 
 extern CHARSET_INFO my_charset_latin1;
 
-int binsearch(char *word, int len, option_list *kp, int n) {
-	int cond, low, mid, high;
 
-	low = 0;
-	high = n - 1;
-	while (low <= high) {
-		mid = (low + high) / 2;
-		if ((cond = strncasemp(word, kp[mid].option,len)) < 0)
-			high = mid - 1;
-		else if (cond > 0)
-			low = mid + 1;
-		else
-			return mid;
-	}
-	return -1;
+/* binsearch():
+   Binary search through a sorted list of keywords.
+   This uses the OS strncasecmp -- mysql has a my_strcasecmp() for latin1,
+   but apparently not a version with counted lengths 
+*/
+int binsearch(char *word, int len, option_list *kp, int n) {
+  int cond, low, mid, high;
+
+  low = 0;
+  high = n - 1;
+  while (low <= high) {
+    mid = (low + high) / 2;
+    if ((cond = strncasecmp(word, kp[mid].option,len)) < 0)
+        high = mid - 1;
+    else if (cond > 0)
+        low = mid + 1;
+    else
+        return mid;
+  }
+  return -1;
 }
 
 
@@ -47,7 +55,7 @@ opt_parser_return parse_options( int n_opts, option_list *opts, char *s) {
     if(optidx == -1) return PARS_ILLEGAL_OPTION;
     
     /* skip more whitespace */
-    for( *val && my_isspace(&my_charset_latin1,*val) ; val++ );
+    for( ; *val && my_isspace(&my_charset_latin1,*val) ; val++ );
     
     /* Next, there must be an equals sign */
     if(*val != '=')	return PARS_SYNTAX_ERROR;
@@ -60,10 +68,10 @@ opt_parser_return parse_options( int n_opts, option_list *opts, char *s) {
 
     /* The value is the string of length "j" beginning at "val" */
     opts[optidx].value = val;
-    opts[optidx].vale_len = j;
+    opts[optidx].value_len = j;
     
     /* Skip more whitespace */
-    for( *r++ ; *r && my_isspace(charset_info,*r); r++ );
+    for( *r++ ; *r && my_isspace(&my_charset_latin1,*r); r++ );
   
     /* Keep going? */
     if(*r != ',') break;

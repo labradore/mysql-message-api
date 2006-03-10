@@ -8,9 +8,9 @@ install:
 clean:
 	rm -f message_api.so udf_spread.o
 
-distclean:
-	rm -f Makefile
+distclean: clean
 	( cd Conf ; make clean )
+	rm -f Makefile
 
 
 
