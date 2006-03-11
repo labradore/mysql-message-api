@@ -2,7 +2,6 @@
 
 extern CHARSET_INFO my_charset_latin1;
 
-
 /* binsearch():
    Binary search through a sorted list of keywords.
    This uses the OS strncasecmp -- mysql has a my_strcasecmp() for latin1,
@@ -15,7 +14,7 @@ int binsearch(char *word, int len, option_list *kp, int n) {
   high = n - 1;
   while (low <= high) {
     mid = (low + high) / 2;
-    if ((cond = strncasecmp(word, kp[mid].option,len)) < 0)
+    if ((cond = strncasecmp(word, kp[mid].name,len)) < 0)
         high = mid - 1;
     else if (cond > 0)
         low = mid + 1;
@@ -25,7 +24,17 @@ int binsearch(char *word, int len, option_list *kp, int n) {
   return -1;
 }
 
-
+/* 
+   parse_options()
+   
+   This parser handles the syntax "option = value [, option = value ] ...".
+   The option parser does not allocate or copy any strings.  If an option is
+   found in the string *s, then opts[idx].value will be set to a pointer 
+   (within s) to the given value, and opts[idx].value_len will indicate its 
+   length, where idx is the index in opts[] of the named option.
+   opts[] is searched as a btree, so it MUST be sorted (ascending & 
+   case-insensitive) on the option name.
+*/
 #define skip_whitespace(p) while(*p && my_isspace(&my_charset_latin1,*p)) p++ 
 
 opt_parser_return parse_options( int n_opts, option_list *opts, char *s) {
@@ -59,7 +68,8 @@ opt_parser_return parse_options( int n_opts, option_list *opts, char *s) {
 
     /* The value is the string of length "j" beginning at "val" */
     opts[optidx].value = val;
-    opts[optidx].value_len = j;
+    opts[optidx].value_len =
+      ( j > opts[optidx].max_value_len ? opts[optidx].max_value_len : j );
     
     skip_whitespace(r);
     opt = r+1;

@@ -13,9 +13,11 @@ void iterate(option_list *opts, int sz) {
   p = malloc(512);
 
   for( i = 0 ; i < sz ; i++) {
-    strcpy(p,"");
-    strncat(p, opts[i].value, opts[i].value_len);
-    printf("       %-10s -> %-15s (%d)\n",opts[i].option, p, opts[i].value_len);
+    if(opts[i].value) {
+      strcpy(p,"");
+      strncat(p, opts[i].value, opts[i].value_len);
+      printf("       %-10s -> %-15s (%d)\n",opts[i].name, p, opts[i].value_len);
+    }
   }   
 }
 
@@ -25,19 +27,20 @@ int main() {
   opt_parser_return r;
 
   option_list Options[] = {	/* keep sorted: binary searched */
-    { "group" , OPT_GROUP ,   0, 0 } ,
-    { "handle" , OPT_HANDLE , "12", 2 },
-    { "name" , OPT_NAME ,     0, 0 } ,
+    { "group" , OPT_GROUP ,   10, 0, 0 } ,
+    { "handle" , OPT_HANDLE , 20, "12", 2 },
+    { "name" , OPT_NAME ,     20, 0, 0 } ,
   };
 
   char *test[] = {
-    "name = fred" ,
+    "name = fred" ,                          /* these are good */
     "name = joe, handle=white",
     "name=joe,handle=blue",
     "NAME = joseph",
     "name = !!(*$&^&%*",
     "group = orders , name=bob,handle=12",
-    "=",
+    "group = 123456789abcdefghijk",         /* too long */
+    "=",                                    /* these are bad */
     " , ",
     "= ,",
     "rollercoaster = thunder road",
