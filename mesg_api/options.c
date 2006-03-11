@@ -7,7 +7,7 @@ extern CHARSET_INFO my_charset_latin1;
    This uses the OS strncasecmp -- mysql has a my_strcasecmp() for latin1,
    but apparently not a version with counted lengths 
 */
-int binsearch(char *word, int len, option_list *kp, int n) {
+static int binsearch(char *word, int len, option_list *kp, int n) {
   int cond, low, mid, high;
 
   low = 0;
