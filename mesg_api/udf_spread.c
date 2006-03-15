@@ -234,7 +234,7 @@ my_bool send_mesg_init(UDF_INIT *initid, UDF_ARGS *args, char *err_msg)
   initid->maybe_null = 0; 
   initid->const_item = 1;
 
-  if(args->arg_count < 2 || args->arg_count > 3 ) {
+  if((args->arg_count < 2) || (args->arg_count > 3 )) {
     strncpy(err_msg,"send_mesg(): wrong number of arguments",MYSQL_ERRMSG_SIZE);
     return 1;
   }
@@ -285,12 +285,15 @@ my_bool send_mesg_init(UDF_INIT *initid, UDF_ARGS *args, char *err_msg)
 long long send_mesg(UDF_INIT *initid, UDF_ARGS *args, 
                     char *is_null, char *error)
 {
-  long long val;
+  long long val = 0;
 
-  if(args->arg_count == 2) 
+  if(args->args[0] == NULL)
+    *error = 1;
+  else if(args->arg_count == 2) 
      val = send_spread_message(initid, args, is_null, error);
-  else
+  else if(args->args[2]) 
      val = send_guaranteed_message(initid, args, is_null, error);
+  else *error = 1;
   
   return val;
 }
@@ -482,7 +485,6 @@ sequence_number delivery_broker(outbox_tag op, struct outbox *outbox, int16 tag,
 
 
 /*
- 
  The receive calls work this way:
  join_mesg_group() maps to SP_connect() and SP_join().  
  The handler that is returned is an index into the recv_pool array.
@@ -496,6 +498,11 @@ sequence_number delivery_broker(outbox_tag op, struct outbox *outbox, int16 tag,
 
 my_bool join_mesg_group_init(UDF_INIT *initid, UDF_ARGS *args, char *err_msg)
 {
+  if((args->arg_count < 1) || (args->arg_count > 2)) {
+    strncpy(err_msg, "join_mesg_group(): wrong number of arguments",MYSQL_ERRMSG_SIZE);
+    return 1;
+  }
+  
   args->arg_type[0] = STRING_RESULT;
   args->lengths[0] = MAX_GROUP_NAME;
 
@@ -515,6 +522,11 @@ long long join_mesg_group(UDF_INIT *initid, UDF_ARGS *args,
   register int err = 0;
   int slot;
   char *private_name;
+  
+  if(args->args[0] == NULL) {
+    *error = 1 ;
+    return 0;
+  }
   
   if(args->arg_count > 1) 
     private_name = args->args[1];
@@ -546,14 +558,13 @@ long long join_mesg_group(UDF_INIT *initid, UDF_ARGS *args,
 my_bool recv_mesg_init(UDF_INIT *initid, UDF_ARGS *args, char *err_msg)
 {
   long long slot;
-  
-  args->arg_type[0] = INT_RESULT;
-  
+    
   if(args->arg_count != 1) {
     strncpy(err_msg, "recv_mesg(): wrong number of arguments",MYSQL_ERRMSG_SIZE);
     return 1;
   }
-  
+  args->arg_type[0] = INT_RESULT;
+
   if(args->args[0]) {
     /* The handle is given as a constant */
     slot = *((long long *) args->args[0]);
@@ -600,7 +611,11 @@ char * recv_mesg(UDF_INIT *initid, UDF_ARGS *args, char *result,
     fits in this, you don't have to worry about allocating.  */
   max_len = 255;
   msg = result;
-  
+
+  if(args->args[0] == NULL) {
+    *error = 1 ;
+    return 0;
+  }
   slot = *((long long *) args->args[0]);
   if( bad_recv_slot(slot)) 
       goto error_return;
@@ -670,9 +685,12 @@ my_bool track_memberships_init(UDF_INIT *initid, UDF_ARGS *args, char *err_msg)
 {
   int s, err;
 
+  if(args->arg_count != 1) {
+    strncpy(err_msg, "track_memberships(): wrong number of arguments",MYSQL_ERRMSG_SIZE);
+    return 1;
+  }
   args->arg_type[0] = STRING_RESULT;
   args->lengths[0] = MAX_GROUP_NAME;
-  args->arg_count = 1;
 
   pthread_once(& init_group_tables_once, initialize_group_tables);
 
@@ -702,12 +720,12 @@ long long track_memberships(UDF_INIT *initid, UDF_ARGS *args,
   int slot;
   pthread_attr_t attr;
   pthread_t tid;
-  
-  if(group_table_op(OP_LOOKUP, & tracked_groups,0,args->args[0]) > 0) {
-    *error = 1;
+
+  if((args->args[0] == NULL) 
+     || (group_table_op(OP_LOOKUP, & tracked_groups,0,args->args[0]) > 0))   {
+    *error = 1 ;
     return 0;
   }
-  
   
   slot = get_recv_pool_connection(NULL);
   if (slot < 0) *error = 1;
@@ -741,15 +759,14 @@ long long track_memberships(UDF_INIT *initid, UDF_ARGS *args,
 my_bool leave_mesg_group_init(UDF_INIT *initid, UDF_ARGS *args, char *err_msg)
 {
   long long slot;
-  
-  args->arg_type[0] = INT_RESULT;
-  
+    
   if(args->arg_count != 1) {
     strncpy(err_msg,"leave_mesg_group(): wrong number of arguments",
             MYSQL_ERRMSG_SIZE);
     return 1;
   }
-  
+  args->arg_type[0] = INT_RESULT;
+
   if(args->args[0]) {
     slot = *((long long *) args->args[0]);
     if(bad_recv_slot(slot) || spread_pool[slot].status < SPREAD_CTX_CONNECTED) 
@@ -770,6 +787,11 @@ long long leave_mesg_group(UDF_INIT *initid, UDF_ARGS *args,
   long long slot;
   int ret;
 
+  if(args->args[0] == NULL) {
+    *is_null = 1 ;
+    return 0;
+  }
+  
   slot = *((long long *) args->args[0]);
 
   if(bad_recv_slot(slot)) *error = 1;
@@ -789,22 +811,21 @@ my_bool mesg_handle_init(UDF_INIT *initid, UDF_ARGS *args, char *err_msg)
   opt_parser_return r;
   option_list *Options = NULL;
   unsigned int set_options;
- 
-  args->arg_type[0] = STRING_RESULT;
-  args->lengths[0] = 512;
-  args->arg_count = 1;
-    
+     
   if(args->arg_count != 1) {
     strncpy(err_msg,"mesg_handle(): wrong number of arguments",
             MYSQL_ERRMSG_SIZE);
     return 1;
   }
-  
+ 
+  args->arg_type[0] = STRING_RESULT;
+  args->lengths[0] = 512;
+ 
   if(args->args[0]) { 
     Options = malloc(sizeof(all_api_options));
     memcpy(Options, all_api_options,sizeof(all_api_options));
 
-    r = parse_options(N_API_OPTIONS, Options, (OPF_name | OPF_recv | OPF_track),
+    r = parse_options(N_API_OPTIONS, Options, (OPF_name | OPF_join | OPF_track),
                       &set_options, args->args[0]);
     if(r) {
       snprintf(err_msg, MYSQL_ERRMSG_SIZE, "mesg_handle(): invalid %s",
@@ -829,7 +850,11 @@ long long mesg_handle(UDF_INIT *initid, UDF_ARGS *args,
   unsigned int set_options;
   int slot;
   char s[MAX_GROUP_NAME];
-  
+
+  if(args->args[0] == NULL) {
+    *error = 1 ;
+    return 0;
+  }  
   if(initid->ptr) {
     /* The query was a static string, so mesg_handle_init parsed it */
     Options = (option_list *) initid->ptr;
@@ -840,7 +865,7 @@ long long mesg_handle(UDF_INIT *initid, UDF_ARGS *args,
       Options = malloc(sizeof(all_api_options));
       memcpy(all_api_options,Options,sizeof(all_api_options));
       
-      if(parse_options(N_API_OPTIONS, Options, (OPF_name | OPF_recv | OPF_track),
+      if(parse_options(N_API_OPTIONS, Options, (OPF_name | OPF_join | OPF_track),
                         &set_options, args->args[0])) {
         *error = 1;
         return 0;
@@ -854,9 +879,9 @@ long long mesg_handle(UDF_INIT *initid, UDF_ARGS *args,
     slot = group_table_op(OP_LOOKUP, & tracked_groups,0,s);
     if(slot > 0) return (long long) slot;
   }
-  else if(set_options & OPF_recv) {
+  else if(set_options & OPF_join) {
     strcpy(s, "");
-    strncat(s, Options[OP_recv].value, Options[OP_recv].value_len);
+    strncat(s, Options[OP_join].value, Options[OP_join].value_len);
     for(slot = RECV_POOL ; slot < POOL_SIZE ; slot++) 
       if((spread_pool[slot].status == SPREAD_CTX_JOINED)
          && (! strcmp(spread_pool[slot].name.group,s)))
@@ -879,9 +904,13 @@ void mesg_handle_deinit(UDF_INIT *initid) {
 }
 
 
-
 my_bool mesg_status_init(UDF_INIT *initid, UDF_ARGS *args, char *err_msg)
 {
+  if(args->arg_count > 1) {
+    strncpy(err_msg,"mesg_status(): wrong number of arguments", MYSQL_ERRMSG_SIZE);
+    return 1;
+  }
+  
   initid->maybe_null = 0;
   initid->max_length = STATUS_REPORT_SIZE;
   initid->ptr = malloc(STATUS_REPORT_SIZE); 
@@ -898,7 +927,7 @@ char * mesg_status(UDF_INIT *initid, UDF_ARGS *args, char *result,
   
   p = initid->ptr;
   
-  if(args->arg_count == 1) {
+  if(args->arg_count == 1 && args->args[0]) {
     slot =  *((long long *) args->args[0]);
     if(slot < 0) {
       *error = 1;
