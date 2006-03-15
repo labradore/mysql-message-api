@@ -9,19 +9,11 @@
 
 #include <string.h>
 
-enum option_id {
-  OPT_NAME = 1,
-  OPT_GROUP,
-  OPT_HANDLE
-};
-typedef enum option_id          option_id;
-
 struct option_list {
   const char *    name;
-  option_id       id;
   int             max_value_len;
   char *          value;
-  int             value_len;
+  unsigned int    value_len;
 };
 typedef struct option_list      option_list;  
 
@@ -32,4 +24,9 @@ enum opt_parser_return {
   
 };
 typedef enum opt_parser_return  opt_parser_return;
+
+/* Prototypes */
+opt_parser_return parse_options(int, option_list *, 
+                                unsigned int, unsigned int *, char *);
+
 

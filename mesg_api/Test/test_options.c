@@ -2,7 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "options.h"
+#include "sp.h"
+#include "api_options.h"
 
 CHARSET_INFO my_charset_latin1 ;
 
@@ -23,14 +24,12 @@ void iterate(option_list *opts, int sz) {
 
 
 int main() {
-  int nopts = 3;
   opt_parser_return r;
+  unsigned int valid_opts, set_opts;
+  option_list *Options;
 
-  option_list Options[] = {	/* keep sorted: binary searched */
-    { "group" , OPT_GROUP ,   10, 0, 0 } ,
-    { "handle" , OPT_HANDLE , 20, "12", 2 },
-    { "name" , OPT_NAME ,     20, 0, 0 } ,
-  };
+  Options = malloc(sizeof(all_api_options));
+  memcpy(Options, all_api_options, sizeof(all_api_options));
 
   char *test[] = {
     "name = fred" ,                          /* these are good */
@@ -39,7 +38,7 @@ int main() {
     "NAME = joseph",
     "name = !!(*$&^&%*",
     "group = orders , name=bob,handle=12",
-    "group = 123456789abcdefghijk",         /* too long */
+    "group = 123456789abcdefghijklmnopqrst",  /* too long */
     "=",                                    /* these are bad */
     " , ",
     "= ,",
@@ -54,13 +53,14 @@ int main() {
     NULL
   };
   int i, j;
-  
+
+  valid_opts = (OPF_name | OPF_group | OPF_handle) ;
   for(i = 0 ; test[i] ; i++) {
-    r = parse_options(nopts, Options, test[i]) ;
+    r = parse_options(N_API_OPTIONS, Options, valid_opts, &set_opts, test[i]) ;
     printf("%-40s -- %sparsed \n", test[i], (r ? "not " : ""));
     if(r == PARS_OK)
-      iterate(Options, nopts);
-    for(j = 0 ; j < nopts ; j++) {
+      iterate(Options, N_API_OPTIONS);
+    for(j = 0 ; j < N_API_OPTIONS ; j++) {
       Options[j].value = 0;
       Options[j].value_len = 0;
     }

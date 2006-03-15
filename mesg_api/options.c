@@ -2,6 +2,7 @@
 
 extern CHARSET_INFO my_charset_latin1;
 
+
 /* binsearch():
    Binary search through a sorted list of keywords.
    This uses the OS strncasecmp -- mysql has a my_strcasecmp() for latin1,
@@ -37,14 +38,16 @@ static int binsearch(char *word, int len, option_list *kp, int n) {
 */
 #define skip_whitespace(p) while(*p && my_isspace(&my_charset_latin1,*p)) p++ 
 
-opt_parser_return parse_options( int n_opts, option_list *opts, char *s) {
+opt_parser_return parse_options(int n_opts, option_list *opts,
+                                unsigned int valid_opts, unsigned int *set_opts,
+                                char *s) {
 
   char *opt, *val, *r;
   int i, j;
   int optidx;
 
   opt = s;
-
+  *set_opts = 0;
   do {
     i = j = 0 ;
     skip_whitespace(opt);
@@ -56,6 +59,10 @@ opt_parser_return parse_options( int n_opts, option_list *opts, char *s) {
     if(i == 0)          return PARS_SYNTAX_ERROR;
     optidx = binsearch(opt, i, opts, n_opts);
     if(optidx == -1)    return PARS_ILLEGAL_OPTION;
+    if(valid_opts & ( 1 << optidx))
+      *set_opts |= (1 << optidx); 
+    else
+      return PARS_ILLEGAL_OPTION;
         
     /* Next, there must be an equals sign */
     skip_whitespace(val);
@@ -64,7 +71,9 @@ opt_parser_return parse_options( int n_opts, option_list *opts, char *s) {
     skip_whitespace(val);
  
     /* Everything until the next comma or whitespace is the value */ 
-    for( r = val ; *r && *r != ',' && (! my_isspace(&my_charset_latin1,*r)) ; r++, j++);
+    for( r = val ;
+         *r && *r != ',' && (! my_isspace(&my_charset_latin1,*r)) ; 
+         r++, j++);
 
     /* The value is the string of length "j" beginning at "val" */
     opts[optidx].value = val;

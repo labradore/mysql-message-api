@@ -137,6 +137,7 @@ struct spread_context {
     unsigned int recv;
   } n;
   struct membership *m;
+  struct option_list *options;
   struct outbox *outbox;
   struct {
     char group[MAX_GROUP_NAME];

@@ -1,5 +1,5 @@
 #include "udf_spread.h"
-#include "options.h"
+#include "api_options.h"
 
 /* This UDF file implements a reliable messaging API for MySQL.
 
@@ -30,7 +30,7 @@
 */
 
 
-static struct group_table     senders;
+static struct group_table     private_names;
 static struct group_table     tracked_groups;
 static pthread_once_t         init_group_tables_once = PTHREAD_ONCE_INIT;
 
@@ -42,16 +42,6 @@ static pthread_mutex_t        send_pool_mutex       = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t        recv_pool_mutex       = PTHREAD_MUTEX_INITIALIZER;
 
 static int16                  base_tag;
-
-
-
-/* We could have a 6-function API (connect,join,send,recv,leave,disconnect)
-   or a 4-function API (join,send,recv,leave).
-   The six function API would allow you to join multiple groups per 
-   connection.  But when we return a message to the mysql user, we don't have
-   any way to also return the group name.  This limits us to one group per
-   connection, and thus the 4-statement API.
-*/
 
 
 /* Spread "send" calls share a small pool of connections.  In theory, when we 
@@ -83,7 +73,7 @@ int initialize_sender(int slot) {
   if(err == ACCEPT_SESSION) {
     spread_pool[slot].status = SPREAD_CTX_CONNECTED;
     spread_pool[slot].outbox = & outboxes[slot];
-    group_table_op(OP_CREATE, & senders, slot, spread_pool[slot].name.private);
+    group_table_op(OP_CREATE, & private_names, slot, spread_pool[slot].name.private);
   }
   else spread_pool[slot].status = SPREAD_CTX_DISCONNECTED;
   return err;
@@ -203,6 +193,7 @@ static char * spread_diagnostic(int e) {
    bounced, you disconnect all of your newly established connections each time
    an old invalid one is discovered.
 */
+/* TO DO: remove the slot from the private_names hash table? */
 
 void handle_spread_disconnect(int err, int slot) {
   SP_error(err);
@@ -544,6 +535,7 @@ long long join_mesg_group(UDF_INIT *initid, UDF_ARGS *args,
   if(! *error) {
     spread_pool[slot].status = SPREAD_CTX_JOINED;
     strncpy(spread_pool[slot].name.group, args->args[0], args->lengths[0]);
+    group_table_op(OP_CREATE, & private_names, slot, spread_pool[slot].name.private);
   }
     
   return (long long) slot;
@@ -785,9 +777,107 @@ long long leave_mesg_group(UDF_INIT *initid, UDF_ARGS *args,
     ret = SP_leave(spread_pool[slot].mbox,spread_pool[slot].name.group);
   
   if(ret) *error = 1;
+  else
+    group_table_op(OP_DELETE, & private_names, slot, spread_pool[slot].name.private);
+
     
   return (long long) (! *error);
 }  
+
+my_bool mesg_handle_init(UDF_INIT *initid, UDF_ARGS *args, char *err_msg)
+{
+  opt_parser_return r;
+  option_list *Options = NULL;
+  unsigned int set_options;
+ 
+  args->arg_type[0] = STRING_RESULT;
+  args->lengths[0] = 512;
+  args->arg_count = 1;
+    
+  if(args->arg_count != 1) {
+    strncpy(err_msg,"mesg_handle(): wrong number of arguments",
+            MYSQL_ERRMSG_SIZE);
+    return 1;
+  }
+  
+  if(args->args[0]) { 
+    Options = malloc(sizeof(all_api_options));
+    memcpy(Options, all_api_options,sizeof(all_api_options));
+
+    r = parse_options(N_API_OPTIONS, Options, (OPF_name | OPF_recv | OPF_track),
+                      &set_options, args->args[0]);
+    if(r) {
+      snprintf(err_msg, MYSQL_ERRMSG_SIZE, "mesg_handle(): invalid %s",
+               ( r == PARS_ILLEGAL_OPTION ? "option" : "syntax") );
+      return 1;
+    } 
+  }
+
+  /* Tuck the set_options bitfield into an unused place in the array */
+  if(Options) 
+    Options[N_API_OPTIONS].value_len = set_options;
+  initid->ptr = (char *) Options;
+  initid->maybe_null = 1;
+  return 0;
+}
+
+
+long long mesg_handle(UDF_INIT *initid, UDF_ARGS *args, 
+                      char *is_null, char *error)
+{
+  option_list *Options;
+  unsigned int set_options;
+  int slot;
+  char s[MAX_GROUP_NAME];
+  
+  if(initid->ptr) {
+    /* The query was a static string, so mesg_handle_init parsed it */
+    Options = (option_list *) initid->ptr;
+    set_options = Options[N_API_OPTIONS].value_len;
+  }
+  else {
+    if(args->args[0]) { 
+      Options = malloc(sizeof(all_api_options));
+      memcpy(all_api_options,Options,sizeof(all_api_options));
+      
+      if(parse_options(N_API_OPTIONS, Options, (OPF_name | OPF_recv | OPF_track),
+                        &set_options, args->args[0])) {
+        *error = 1;
+        return 0;
+      }
+    }
+  }
+  
+  if(set_options & OPF_track) {
+    strcpy(s, "");
+    strncat(s, Options[OP_track].value, Options[OP_track].value_len);
+    slot = group_table_op(OP_LOOKUP, & tracked_groups,0,s);
+    if(slot > 0) return (long long) slot;
+  }
+  else if(set_options & OPF_recv) {
+    strcpy(s, "");
+    strncat(s, Options[OP_recv].value, Options[OP_recv].value_len);
+    for(slot = RECV_POOL ; slot < POOL_SIZE ; slot++) 
+      if((spread_pool[slot].status == SPREAD_CTX_JOINED)
+         && (! strcmp(spread_pool[slot].name.group,s)))
+          return (long long) slot;
+  }
+  else if(set_options & OPF_name) {
+    strcpy(s, "");
+    strncat(s, Options[OP_name].value, Options[OP_name].value_len);
+        slot = group_table_op(OP_LOOKUP, & private_names,0,s);
+    if(slot > -1) return (long long) slot;
+  }
+
+  *is_null = 1;
+  return (long long) 0;
+}  
+
+
+void mesg_handle_deinit(UDF_INIT *initid) {
+  free(initid->ptr);
+}
+
 
 
 my_bool mesg_status_init(UDF_INIT *initid, UDF_ARGS *args, char *err_msg)
@@ -1063,7 +1153,7 @@ void * memberships_thread(void * a) {
       /* Test to see if this was a guaranteed message sent by a sender on this
          server */
       if((mess_type >= base_tag) && (mess_type <= base_tag + OUT_BOX_SIZE) 
-          && ((sender_slot = group_table_op(OP_LOOKUP, & senders, 0, sender)) 
+          && ((sender_slot = group_table_op(OP_LOOKUP, & private_names, 0, sender)) 
               != GROUP_NOT_FOUND))  
       {
         tag = mess_type - base_tag;
@@ -1205,7 +1295,7 @@ void * memberships_thread(void * a) {
 
 void initialize_group_tables() {
   my_rwlock_init(& tracked_groups.lock,NULL);
-  my_rwlock_init(& senders.lock,NULL);
+  my_rwlock_init(& private_names.lock,NULL);
 }
 
 
