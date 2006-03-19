@@ -47,9 +47,16 @@ run a Spread daemon on each MySQL Server.
 */
 #define GROUP_TABLE_SIZE 128
 
+/* 
+  How many outboxes (for guaranteed message delivery)
+  does each sender have? 
+*/
+#define OUT_BOX_SIZE 150 
 
 /*
   How many messages can you handle while membership is transitional?
+  (This is not a hard limit; if you reach it, the memberships thread
+   will simply allocate a bigger queue).
 */
 #define TRANSITIONAL_QUEUE_SIZE 2048
 
@@ -87,8 +94,6 @@ the recv pool starts at the end of the send pool.
 */
 #define POOL_SIZE ( SEND_POOL_SIZE + RECV_POOL_SIZE )
 #define RECV_POOL SEND_POOL_SIZE
-
-#define OUT_BOX_SIZE 150 
 
 enum hash_op { 
   OP_CREATE,

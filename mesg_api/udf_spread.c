@@ -1,4 +1,4 @@
-#include "udf_spread.h"
+ #include "udf_spread.h"
 #include "api_options.h"
 
 /* This UDF file implements a reliable messaging API for MySQL.
@@ -462,7 +462,7 @@ sequence_number delivery_broker(outbox_tag op, struct outbox *outbox, int16 tag,
         )
       {
         if(outbox->mesg[i].status == BOX_SENT) sender_needs_alert = 1;
-        outbox->mesg[tag].sequence = seq;
+        outbox->mesg[tag].sequence = seq;   /* !?!?!?! is this a typo? */
         outbox->mesg[i].status = BOX_NOT_RECVD;
       }
     }
@@ -988,15 +988,15 @@ long long is_a_member( struct membership *memb, sequence_number seq, char *membe
     q = (char *) ( p + (MAX_GROUP_NAME * v->n_members));
 
     /* member could be a full private name, like "#user1#madison",
-	   which Spread will report to you.  Or it might just be "user1",
-	   which you have requested in SP_connect().  We accept either form,
-	   and we do this by:
-	     skipping over the first character of p (known to be a '#')
-		 skipping the first character if member if it is a '#'
-		 doing a leftmost-substring match: does "p" begin with "member"?
+       which Spread will report to you.  Or it might just be "user1",
+       which you have requested in SP_connect().  We accept either form,
+       and we do this by:
+       skipping over the first character of p (known to be a '#')
+       skipping the first character if member if it is a '#'
+       doing a leftmost-substring match: does "p" begin with "member"?
     */
 	
-	if(*member == '#') member++;
+    if(*member == '#') member++;
 	
     while(p < q) 
     { 

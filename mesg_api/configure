@@ -163,7 +163,7 @@ done
 #
 spread_includes=""
 spread_inc_ok=""
-for path in '' "-I$spread_install" "-I$spread_install/include"
+for path in "-I$spread_install/include" "-I$spread_install" ''
   do
     CFLAGS=""
     test -n "$path" -a -n "$spread_install" && CFLAGS=$path
@@ -183,7 +183,7 @@ spread_ldflags=""
 for lib in "spread" "sp"
  do 
    test -n "$spread_ldflags"  && break
-   for path in '' "$spread_install" "$spread_install/lib" 
+   for path in "$spread_install/lib" "$spread_install" ''
       do
         CFLAGS=""  
         LDFLAGS=""
