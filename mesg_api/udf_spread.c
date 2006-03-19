@@ -664,19 +664,17 @@ char * recv_mesg(UDF_INIT *initid, UDF_ARGS *args, char *result,
   }
   
   error_return:
-
+  *error = 1;
   if(rcv == CONNECTION_CLOSED) 
     handle_spread_disconnect(rcv,slot);
 
   if(rcv == ILLEGAL_SESSION)
     handle_illegal_session(rcv,slot);
 
-  *error = 1;
-  return NULL;
-  
   self_leave:
-  disconnect_recv_slot(slot);
   *is_null = 1;
+  disconnect_recv_slot(slot);
+  
   return NULL;
 }
 
@@ -929,8 +927,12 @@ char * mesg_status(UDF_INIT *initid, UDF_ARGS *args, char *result,
   
   if(args->arg_count == 1 && args->args[0]) {
     slot =  *((long long *) args->args[0]);
-    if(slot < 0) {
+    if((slot < 0) || (slot >= POOL_SIZE)) {
       *error = 1;
+      return NULL;
+    }
+    else if(spread_pool[slot].status == SPREAD_CTX_FREE) {
+      *length = 0;
       return NULL;
     }
     else if(slot < SEND_POOL_SIZE) {
