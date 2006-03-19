@@ -933,7 +933,7 @@ char * mesg_status(UDF_INIT *initid, UDF_ARGS *args, char *result,
     }
     else if(spread_pool[slot].status == SPREAD_CTX_FREE) {
       *length = 0;
-      return NULL;
+      return "";
     }
     else if(slot < SEND_POOL_SIZE) {
       status__send_pool(p, &sz, slot);
