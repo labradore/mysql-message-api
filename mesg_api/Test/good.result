@@ -1,5 +1,4 @@
 name = fred                              -- parsed 
-       handle     -> 12              (2)
        name       -> fred            (4)
 name = joe, handle=white                 -- parsed 
        handle     -> white           (5)
@@ -15,8 +14,8 @@ group = orders , name=bob,handle=12      -- parsed
        group      -> orders          (6)
        handle     -> 12              (2)
        name       -> bob             (3)
-group = 123456789abcdefghijk             -- parsed 
-       group      -> 123456789a      (10)
+group = 123456789abcdefghijklmnopqrst    -- parsed 
+       group      -> 123456789abcdefghijklmnopqrst (29)
 =                                        -- not parsed 
  ,                                       -- not parsed 
 = ,                                      -- not parsed 
