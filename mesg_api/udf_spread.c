@@ -1,25 +1,49 @@
- #include "udf_spread.h"
+/* Copyright (C) 2006 MySQL AB
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
+
+This product uses software developed by Spread Concepts LLC for use in the 
+Spread toolkit. For more information about Spread see http://www.spread.org
+*/
+
+#include "udf_spread.h"
 #include "api_options.h"
+
 
 /* This UDF file implements a reliable messaging API for MySQL.
 
-    send_mesg(CHAR group,CHAR message, [CHAR group_member])
+    INT send_mesg(CHAR group,CHAR message, [CHAR group_member])
       send <message> to <group>.
       Returns TRUE if message was sent successfully.
       If <group_member> is included, also check whether <group_member> matches
       a prefix of some member of the group; if not, return FALSE.  
       On error, return NULL.
-    join_mesg_group(CHAR group) 
+    INT join_mesg_group(CHAR group) 
        Join <group> and listen for messages.  This function returns a positive
        integer <handle> that must be used in later calls to recv_mesg().  
-    recv_mesg(INT handle)
+    CHAR recv_mesg(INT handle)
        Blocks listening for messages. Returns a message, or NULL as an exception
-    leave_mesg_group(int handle) 
+    INT leave_mesg_group(int handle) 
       Leave group and disconnect.
-    track_memberships(CHAR group)
+    INT track_memberships(CHAR group)
       Track membership of a group.  Returns a handle that can be disconnected 
       using leave_mesg_group().
-    mesg_status([INT handle])
+    INT mesg_handle(CHAR query) 
+      Implements a simple query syntax, and returns the pre-existing message
+      handle requested in the query.
+    CHAR mesg_status([INT handle])
       Returns some status information on a message handle, or on all handles.
 
     The functions rely on reliable group communications implemented by the 
