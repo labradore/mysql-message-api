@@ -559,7 +559,7 @@ long long join_mesg_group(UDF_INIT *initid, UDF_ARGS *args,
 
   slot = get_recv_pool_connection(private_name);
   if (slot < 0) *error = 1;
-  
+      
   if(! *error) {
     /* Join a group */
     /* int SP_join( mailbox mbox, const char *group); */
@@ -570,7 +570,7 @@ long long join_mesg_group(UDF_INIT *initid, UDF_ARGS *args,
   
   if(! *error) {
     spread_pool[slot].status = SPREAD_CTX_JOINED;
-    strncpy(spread_pool[slot].name.group, args->args[0], args->lengths[0]);
+    strncpy(spread_pool[slot].name.group, args->args[0], MAX_GROUP_NAME);
     group_table_op(OP_CREATE, & private_names, slot, spread_pool[slot].name.private);
   }
     
@@ -912,8 +912,15 @@ long long mesg_handle(UDF_INIT *initid, UDF_ARGS *args,
   else if(set_options & OPF_name) {
     strcpy(s, "");
     strncat(s, Options[OP_name].value, Options[OP_name].value_len);
-        slot = group_table_op(OP_LOOKUP, & private_names,0,s);
+    /* First try a lookup for an exact match */
+    slot = group_table_op(OP_LOOKUP, & private_names,0,s);
     if(slot > -1) return (long long) slot;
+    /* Then try a match on the part of the name between # signs */
+    strcat(s, "#");
+    for(slot = RECV_POOL ; slot < POOL_SIZE ; slot++) 
+      if((spread_pool[slot].status > SPREAD_CTX_CONNECTING)
+       && (! strncmp(spread_pool[slot].name.private + 1, s, Options[OP_name].value_len + 1 )))
+        return (long long) slot;
   }
 
   *is_null = 1;
