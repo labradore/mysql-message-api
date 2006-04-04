@@ -578,6 +578,15 @@ long long join_mesg_group(UDF_INIT *initid, UDF_ARGS *args,
 }  
 
 
+static inline void disconnect_recv_slot(int slot) {
+  pthread_mutex_lock(&recv_pool_mutex);
+  SP_disconnect(spread_pool[slot].mbox);
+  spread_pool[slot].status = SPREAD_CTX_FREE;
+  spread_pool[slot].mbox = 0;
+  spread_pool[slot].n.recv = 0;
+  pthread_mutex_unlock(&recv_pool_mutex);
+}
+
 
 my_bool recv_mesg_init(UDF_INIT *initid, UDF_ARGS *args, char *err_msg)
 {
@@ -608,16 +617,6 @@ my_bool recv_mesg_init(UDF_INIT *initid, UDF_ARGS *args, char *err_msg)
 }
 
 
-static inline void disconnect_recv_slot(int slot) {
-  pthread_mutex_lock(&recv_pool_mutex);
-    SP_disconnect(spread_pool[slot].mbox);
-    spread_pool[slot].status = SPREAD_CTX_FREE;
-    spread_pool[slot].mbox = 0;
-    spread_pool[slot].n.recv = 0;
-  pthread_mutex_unlock(&recv_pool_mutex);
-}
-
-
 char * recv_mesg(UDF_INIT *initid, UDF_ARGS *args, char *result,
                   unsigned long *length, char *is_null, char *error)
 {
@@ -643,10 +642,9 @@ char * recv_mesg(UDF_INIT *initid, UDF_ARGS *args, char *result,
   slot = *((long long *) args->args[0]);
   if( bad_recv_slot(slot)) 
       goto error_return;
-      
+  spread_pool[slot].status = SPREAD_CTX_RECV_MESG;      
   max_groups = 1;
-  spread_pool[slot].status = SPREAD_CTX_RECV_MESG;
-
+  
   get_message:  
   svctype = 0;
 
@@ -674,6 +672,7 @@ char * recv_mesg(UDF_INIT *initid, UDF_ARGS *args, char *result,
   if(rcv < 0) 
     goto error_return ;
 
+  spread_pool[slot].status = SPREAD_CTX_JOINED;
   spread_pool[slot].n.recv++;
   
   if( Is_self_leave(svctype)) 
@@ -905,8 +904,9 @@ long long mesg_handle(UDF_INIT *initid, UDF_ARGS *args,
     strcpy(s, "");
     strncat(s, Options[OP_join].value, Options[OP_join].value_len);
     for(slot = RECV_POOL ; slot < POOL_SIZE ; slot++) 
-      if((spread_pool[slot].status == SPREAD_CTX_JOINED)
-         && (! strcmp(spread_pool[slot].name.group,s)))
+      if(((spread_pool[slot].status == SPREAD_CTX_JOINED) ||
+          (spread_pool[slot].status == SPREAD_CTX_RECV_MESG))
+        && (! strcmp(spread_pool[slot].name.group,s)))
           return (long long) slot;
   }
   else if(set_options & OPF_name) {
