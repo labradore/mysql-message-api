@@ -125,27 +125,30 @@ void initialize_outboxes() {
     initialize_outbox(i);
 }
 
+
 int initialize_send_pool() {
   int err, i;
   int success = 0;
   int return_val = ACCEPT_SESSION;
+  time_t timespec;
 
   pthread_once(& init_outboxes_once, initialize_outboxes);
   pthread_once(& init_group_tables_once, initialize_group_tables);
 
   pthread_mutex_lock(&send_pool_mutex);
-  if(! send_pool_is_initialized) {
-    for(i=0 ; i < SEND_POOL_SIZE; i++) {
-      err = initialize_sender(i);
-      if(err == ACCEPT_SESSION) success++; 
-      else return_val = err;
+    if(! send_pool_is_initialized) {
+      for(i=0 ; i < SEND_POOL_SIZE; i++) {
+        err = initialize_sender(i);
+        if(err == ACCEPT_SESSION) success++; 
+        else return_val = err;
+      }
     }
-  }
-  if(success) {
-    srandomdev();
-    base_tag = random() % 24000 ;
-    send_pool_is_initialized = 1;
-  }
+    if(success) {
+      time(&timespec);
+      seed_rand((int) timespec);
+      base_tag = get_rand() % 24000;
+      send_pool_is_initialized = 1;
+    }
   pthread_mutex_unlock(&send_pool_mutex);
   return return_val;
 }
@@ -371,7 +374,7 @@ long long send_guaranteed_message(UDF_INIT *initid, UDF_ARGS *args,
   /* args[0] is the group name, args[1] is the message.
      args[2] names the required recipient. */
   
-  slot = random() % SEND_POOL_SIZE;
+  slot = get_rand() % SEND_POOL_SIZE;
   ctx = & spread_pool[slot];
 
   members_slot = group_table_op(OP_LOOKUP,& tracked_groups,0,args->args[0]);

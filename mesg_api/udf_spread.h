@@ -101,6 +101,15 @@ run a Spread daemon on each MySQL Server.
   (x) || fprintf(stderr,"!! Message UDF assertion failed at line %d !! \n",__LINE__);\
 }
 
+/* HAVE_LRAND48 is from my_global.h */
+#ifdef HAVE_LRAND48
+#define get_rand lrand48
+#define seed_rand srand48
+#else
+#define get_rand rand
+#define seed_rand srand
+#endif
+
 
 /*
 In actuality the send pool and recv pool are a single array;
@@ -248,6 +257,4 @@ void status__group_table(char *p, int *sz, int slot);
 void status__send_pool(char *p, int *sz, int slot);
 void status__recv_pool(char *p, int *sz, int slot);
 void status__outboxes(char *p, int *sz, int slot);
-
-extern void my_sleep(unsigned long);
 

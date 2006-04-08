@@ -17,13 +17,8 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 #include "options.h"
 
-extern CHARSET_INFO my_charset_latin1;
-
-
 /* binsearch():
    Binary search through a sorted list of keywords.
-   This uses the OS strncasecmp -- mysql has a my_strcasecmp() for latin1,
-   but apparently not a version with counted lengths 
 */
 static int binsearch(char *word, int len, option_list *opts, int n) {
   int cond, low, mid, high;
@@ -53,7 +48,7 @@ static int binsearch(char *word, int len, option_list *opts, int n) {
    opts[] is searched as a btree, so it MUST be sorted (ascending & 
    case-insensitive) on the option name.
 */
-#define skip_whitespace(p) while(*p && my_isspace(&my_charset_latin1,*p)) p++ 
+#define skip_whitespace(p) while(*p && isspace(*p)) p++ 
 
 opt_parser_return parse_options(int n_opts, option_list *opts,
                                 unsigned int valid_opts, unsigned int *set_opts,
@@ -70,7 +65,7 @@ opt_parser_return parse_options(int n_opts, option_list *opts,
     skip_whitespace(opt);
 
     /* the first word is the option name, extending from "p" for length "i" */
-    for( val = opt; *val && my_isvar(&my_charset_latin1,*val) ; val++, i++);	
+    for( val = opt; *val && isalpha(*val) ; val++, i++);	
 
     /* The option is the string of length "i" beginning at "opt" */
     if(i == 0) return PARS_SYNTAX_ERROR;
@@ -89,7 +84,7 @@ opt_parser_return parse_options(int n_opts, option_list *opts,
  
     /* Everything until the next comma or whitespace is the value */ 
     for( r = val ;
-         *r && *r != ',' && (! my_isspace(&my_charset_latin1,*r)) ; 
+         *r && *r != ',' && (! isspace(*r)) ; 
          r++, j++);
 
     /* The value is the string of length "j" beginning at "val" */
