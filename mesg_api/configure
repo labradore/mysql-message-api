@@ -128,7 +128,7 @@ compile_test() {
     return 1
   ) >> config.log 2>&1
   success=$?
-  rm -f test_$1 test_$1.c
+  test "$2" != "keep" && rm -f test_$1 test_$1.c
   return $success
 }
 
@@ -175,6 +175,15 @@ for path in "-I$spread_install/include" "-I$spread_install" ''
     fi
 done
 
+## What version of Spread?
+test -n "$spread_includes" && CFLAGS="$spread_includes"
+compile_test spread_ver keep
+spread_version=`./test_spread_ver`
+rm -f test_spread_ver.c test_spread_ver
+( echo
+  echo Spread Version: $spread_version ) >> config.log
+
+
 ## Test linking with the old (libsp) and new (libspread) Spread lib,
 ## though in the end, we will actually link with the thread-safe version,
 ## libtsp or libtspread
@@ -188,7 +197,13 @@ for lib in "spread" "sp"
         CFLAGS=""  
         LDFLAGS=""
         test -n "$spread_includes" && CFLAGS="$spread_includes"
-        test -n "$lib" && LDFLAGS="-l$lib"  && sp_ld1="-lt$lib"
+        if [ -n "$lib" ] 
+         then LDFLAGS="-l$lib" 
+         if [ "$spread_version" = "3" ] 
+           then sp_ld1="-lt$lib";
+         else sp_ld1="-l$lib";
+         fi
+        fi
         test -n "$path" && LDFLAGS="$LDFLAGS -L$path" && sp_ld2="-L$path"
         if compile_test spread_lib
           then
@@ -206,7 +221,7 @@ test -z "$spread_ldflags" && not_found "Spread library files"
 test -n "$done_usage"  && echo && exit 1
 
 echo " ... MySQL OK:   $mysql_includes"
-echo " ... Spread OK:  $spread_includes" 
+echo " ... Spread OK:  $spread_includes (Version: $spread_version)"
 echo " ... Linking OK: $spread_ldflags"
 
 (
