@@ -186,7 +186,7 @@ rm -f test_spread_ver.c test_spread_ver
 
 ## Test linking with the old (libsp) and new (libspread) Spread lib,
 ## though in the end, we will actually link with the thread-safe version,
-## libtsp or libtspread
+## libtsp or libtspread for Spread 3 (lipspread for Spread 4)
 #
 spread_ldflags=""
 for lib in "spread" "sp"
@@ -229,7 +229,14 @@ echo " ... Linking OK: $spread_ldflags"
   ( echo "LIB_FLAGS = $spread_ldflags"  
     echo "INC_FLAGS = $mysql_includes $spread_includes"
   ) > Make_file_head
-  so_make_file=`./gnu.config.guess | awk -f choose_make.awk`
+  CONF_GUESS=`./gnu.config.guess`
+   
+  ## Apparently all x86_64 linuxes need -fPIC.
+  if echo $CONF_GUESS | grep -q 'x86_64.*linux'
+   then echo "LINK_FLAGS = -fPIC" >> Make_file_head
+  fi
+  
+  so_make_file=`echo $CONF_GUESS | awk -f choose_make.awk`
   cat Make_file_head "$so_make_file" Make_file_tail
 ) > Makefile
 
