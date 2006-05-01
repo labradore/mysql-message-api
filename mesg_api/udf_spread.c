@@ -842,27 +842,24 @@ my_bool mesg_handle_init(UDF_INIT *initid, UDF_ARGS *args, char *err_msg)
     return 1;
   }
  
+  Options = malloc(sizeof(all_api_options));
+  initialize_options(Options);
   args->arg_type[0] = STRING_RESULT;
   args->lengths[0] = 512;
- 
-  if(args->args[0]) { 
-    Options = malloc(sizeof(all_api_options));
-    memcpy(Options, all_api_options,sizeof(all_api_options));
-
-    r = parse_options(N_API_OPTIONS, Options, (OPF_name | OPF_join | OPF_track),
-                      &set_options, args->args[0]);
-    if(r) {
-      snprintf(err_msg, MYSQL_ERRMSG_SIZE, "mesg_handle(): invalid %s",
-               ( r == PARS_ILLEGAL_OPTION ? "option" : "syntax") );
-      return 1;
-    } 
-  }
-
-  /* Tuck the set_options bitfield into an unused place in the array */
-  if(Options) 
-    Options[N_API_OPTIONS].value_len = set_options;
   initid->ptr = (char *) Options;
   initid->maybe_null = 1;
+ 
+  if(args->args[0]) { 
+    r = parse_api_options(Options, (OPF_name | OPF_join | OPF_track),
+                          &set_options, args->args[0]);
+    if(r) {
+      OPTIONS_ERROR("mesg_handle",r);
+      return 1;
+    }
+    else
+      STORE_SET_OPTIONS = set_options;
+  }
+
   return 0;
 }
 
@@ -875,25 +872,22 @@ long long mesg_handle(UDF_INIT *initid, UDF_ARGS *args,
   int slot;
   char s[MAX_GROUP_NAME];
 
-  if(args->args[0] == NULL) {
+  if((args->args[0] == NULL) || (initid->ptr == NULL)) {
     *error = 1 ;
     return 0;
   }  
-  if(initid->ptr) {
-    /* The query was a static string, so mesg_handle_init parsed it */
-    Options = (option_list *) initid->ptr;
-    set_options = Options[N_API_OPTIONS].value_len;
-  }
+  Options = (option_list *) initid->ptr;
+
+  if(STORE_SET_OPTIONS) 
+    /* The query was a static string; mesg_handle_init parsed it */
+    set_options = STORE_SET_OPTIONS;  
   else {
-    if(args->args[0]) { 
-      Options = malloc(sizeof(all_api_options));
-      memcpy(all_api_options,Options,sizeof(all_api_options));
-      
-      if(parse_options(N_API_OPTIONS, Options, (OPF_name | OPF_join | OPF_track),
-                        &set_options, args->args[0])) {
+    /* Not a static options string; parse it every time */
+      initialize_options(Options);
+      if(parse_api_options(Options, (OPF_name | OPF_join | OPF_track),
+                           &set_options, args->args[0])) {
         *error = 1;
         return 0;
-      }
     }
   }
   

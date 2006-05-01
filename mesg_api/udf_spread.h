@@ -220,7 +220,7 @@ struct mesg_rec {
 };
 
 struct outbox {
-  pthread_mutex_t lock;
+  pthread_mutex_t  lock;
   pthread_cond_t   telephone;
   short            max_used_tag;
   unsigned int     n_broadcast;

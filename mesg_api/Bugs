@@ -1,3 +1,5 @@
+An online bugs database will be available soon.
+
 -- RELEASE HISTORY:
  1.0 Beta 1, 6 April 2006.
  1.0 Beta 2, 7 April 2006.  Fix linking problems on Ubuntu 5.  srandomdev() 
@@ -5,6 +7,10 @@
   global symbol my_charset_latin1
  1.0 Beta 3, 8 April 2006.  The "configure" script should now be able to 
   create a proper Makefile for Spread 4, with -lspread rather than -ltspread.
+
+CODING STYLE BUG?
+Rather than passing such a variety of things in initid->ptr, always pass an
+"explicit init structure" 
 
 OPEN BUGS
 --
