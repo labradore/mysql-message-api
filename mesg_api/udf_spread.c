@@ -531,13 +531,9 @@ my_bool join_mesg_group_init(UDF_INIT *initid, UDF_ARGS *args, char *err_msg)
   }
   
   args->arg_type[0] = STRING_RESULT;
-  args->lengths[0] = MAX_GROUP_NAME;
-
-  if(args->arg_count == 2) {
+  if(args->arg_count == 2)
     args->arg_type[1] = STRING_RESULT;
-    args->lengths[1]  = MAX_PRIVATE_NAME;
-  }
-
+  
   initid->maybe_null = 0;
   return 0;
 }
@@ -714,7 +710,6 @@ my_bool track_memberships_init(UDF_INIT *initid, UDF_ARGS *args, char *err_msg)
     return 1;
   }
   args->arg_type[0] = STRING_RESULT;
-  args->lengths[0] = MAX_GROUP_NAME;
 
   pthread_once(& init_group_tables_once, initialize_group_tables);
 
@@ -845,7 +840,6 @@ my_bool mesg_handle_init(UDF_INIT *initid, UDF_ARGS *args, char *err_msg)
   Options = malloc(sizeof(all_api_options));
   initialize_options(Options);
   args->arg_type[0] = STRING_RESULT;
-  args->lengths[0] = 512;
   initid->ptr = (char *) Options;
   initid->maybe_null = 1;
  
