@@ -157,6 +157,11 @@ typedef unsigned char sequence_number;
 typedef unsigned long sequence_number;
 #endif
 
+
+/* struct spread_context
+   The connection pool is an array of these;
+   this is the principal data structure in this code.
+*/
 struct spread_context {
   mailbox mbox;
   enum ctx_status status;
@@ -164,9 +169,8 @@ struct spread_context {
     unsigned int sent;
     unsigned int recv;
   } n;
-  struct membership *m;
-  struct option_list *options;
-  struct outbox *outbox;
+  struct membership *m;     /* used only by track_memberships() */
+  struct outbox *outbox;    /* used only by senders */
   struct {
     char group[MAX_GROUP_NAME];
     char private[MAX_GROUP_NAME];
@@ -174,6 +178,10 @@ struct spread_context {
 };
 
 
+/* struct mesg_queue_rec
+   When the network state is transitional, the memberships thread tracks 
+   received messages in an array of mesg_queue_rec structures
+*/
 struct mesg_queue_rec {
   sequence_number seq;
   struct outbox *outbox;
@@ -181,6 +189,9 @@ struct mesg_queue_rec {
 };
 
 
+/* struct membership
+   The primary data structure used for track_memberships()
+*/
 struct membership {
   rw_lock_t list_lock;
   struct member_list *vers;
@@ -196,8 +207,10 @@ struct membership {
   } trans;
 };
 
-/* A member_list holds a particular version of a membership list, valid for 
-   messages with sequence numbers from valid_start to valid_end, with links
+
+/* struct member_list
+   Holds a particular version of a membership list, valid for messages 
+   with sequence numbers from valid_start to valid_end, with links
    to earlier and later versions 
 */
 struct member_list {
@@ -210,6 +223,9 @@ struct member_list {
 };
 
 
+/* struct mesg_rec
+   ctx->outbox has an array of OUT_BOX_SIZE mesg_rec structures
+*/
 struct mesg_rec {
   sequence_number sequence;
   short mthread_slot;
@@ -219,6 +235,11 @@ struct mesg_rec {
   } flags;
 };
 
+
+/* struct outbox
+   head of the data structure used by a sender 
+   to track guaranteed sent messages
+*/
 struct outbox {
   pthread_mutex_t  lock;
   pthread_cond_t   telephone;
@@ -226,13 +247,20 @@ struct outbox {
   unsigned int     n_broadcast;
   struct mesg_rec  mesg[OUT_BOX_SIZE];
 };
-  
+
+
+/* struct group_table
+   A hash table
+ */
 struct group_table {
   rw_lock_t  lock;
   struct name_list *names[GROUP_TABLE_SIZE];
 };
 
 
+/* struct name_list
+   An element in a hash chain
+ */
 struct name_list {
   char *name;
   int len;
@@ -240,6 +268,24 @@ struct name_list {
   struct name_list *next;
 };
 
+
+/* struct message_function_init
+   An explicit structure passed in initid->ptr from a UDF init function
+   to a UDF main function 
+ */
+struct message_function_init {
+  struct timeval timeval;
+  int slot;
+  unsigned int set_options;
+  struct spread_context *ctx;
+  struct option_list *options;  
+  char *text;
+};
+
+
+/*
+ *   function prototypes
+ */
 
 long long is_a_member( struct membership *, sequence_number, char *);
 int group_table_op(enum hash_op, struct group_table *, int, char *);

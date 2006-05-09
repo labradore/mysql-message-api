@@ -245,11 +245,18 @@ my_bool bad_recv_slot(int slot) {
 }
 
 
+
+/* SQL send_mesg() returns:
+  1 if message was sent,
+  0 if message was sent but recipient is not joined,
+*/
+
 my_bool send_mesg_init(UDF_INIT *initid, UDF_ARGS *args, char *err_msg)
 {
   int err;
   int slot;
     
+  initid->maybe_null = 0; 
   if(! send_pool_is_initialized) {
     err = initialize_send_pool();
     if(err != ACCEPT_SESSION) {
@@ -257,9 +264,6 @@ my_bool send_mesg_init(UDF_INIT *initid, UDF_ARGS *args, char *err_msg)
       return 1;
     }
   }
-  /* To do: set maybe_null and const_item in all other functions */
-  initid->maybe_null = 0; 
-  initid->const_item = 1;
 
   if((args->arg_count < 2) || (args->arg_count > 3 )) {
     strncpy(err_msg,"send_mesg(): wrong number of arguments",MYSQL_ERRMSG_SIZE);
@@ -304,11 +308,6 @@ my_bool send_mesg_init(UDF_INIT *initid, UDF_ARGS *args, char *err_msg)
 }
 
 
-/* SQL send_mesg() returns:
-      1 if message was sent,
-      0 if message was sent but recipient is not joined,
-      NULL if an error occured
-*/
 long long send_mesg(UDF_INIT *initid, UDF_ARGS *args, 
                     char *is_null, char *error)
 {
@@ -437,7 +436,7 @@ long long send_guaranteed_message(UDF_INIT *initid, UDF_ARGS *args,
 
 
 sequence_number delivery_broker(outbox_tag op, struct outbox *outbox, int16 tag, 
-                             sequence_number seq) {
+                                sequence_number seq) {
   register sequence_number return_value = 0;
   my_bool sender_needs_alert = 0;
   int i, err = 0;
@@ -525,11 +524,13 @@ sequence_number delivery_broker(outbox_tag op, struct outbox *outbox, int16 tag,
 
 my_bool join_mesg_group_init(UDF_INIT *initid, UDF_ARGS *args, char *err_msg)
 {
+  initid->maybe_null = 0;
+
   if((args->arg_count < 1) || (args->arg_count > 2)) {
     strncpy(err_msg, "join_mesg_group(): wrong number of arguments",MYSQL_ERRMSG_SIZE);
     return 1;
   }
-  
+
   args->arg_type[0] = STRING_RESULT;
   args->lengths[0] = MAX_GROUP_NAME;
 
@@ -537,8 +538,6 @@ my_bool join_mesg_group_init(UDF_INIT *initid, UDF_ARGS *args, char *err_msg)
     args->arg_type[1] = STRING_RESULT;
     args->lengths[1]  = MAX_PRIVATE_NAME;
   }
-
-  initid->maybe_null = 0;
   return 0;
 }
 
@@ -591,16 +590,64 @@ static inline void disconnect_recv_slot(int slot) {
 }
 
 
+int ascii_to_timeval(char *s, int len, struct timeval *tv) {
+  char *p, *q;
+  char tmp[16];
+  int lsz, rsz, extra;
+  int j, t;
+  
+  rsz = lsz = 0;
+  tv->tv_sec = tv->tv_usec = 0;
+  p = s;
+  
+  if( *p != '.') {
+    /* full seconds, left of the decimal */
+    while(isdigit(*p) && (lsz < 16) && (lsz < len)) p++, lsz++;
+    if((lsz > 15) || (lsz < 1)) return 0;
+    strcpy(tmp, "");
+    strncat(tmp,s,lsz);
+    tv->tv_sec = atoi(tmp);
+    if(lsz == len) return 1;
+  }
+  /* next character must be the decimal point */
+  if(*p != '.') return 0;
+  extra = 1; /* length of the decimal point */
+  q = ++p;
+  /* string from q to p is fractional seconds right of the decimal */
+  while(isdigit(*q) && rsz < 7) q++, rsz++;
+  while(isdigit(*q)) q++, extra++;
+  if( rsz + lsz + extra != len) return 0;
+  
+  strcpy(tmp, "");
+  strncat(tmp,p,rsz);
+  j = atoi(tmp);  
+  for( t = 1 ; rsz++ < 6 ; t *= 10);
+  tv->tv_usec = j * t;
+  return 1;
+}
+
+
 my_bool recv_mesg_init(UDF_INIT *initid, UDF_ARGS *args, char *err_msg)
 {
   long long slot;
-    
-  if(args->arg_count != 1) {
+  opt_parser_return r;
+  struct message_function_init *f;
+
+  initid->maybe_null = 1;
+  f = calloc(1,sizeof(struct message_function_init));
+  initid->ptr = (char *) f;              
+  
+  if((args->arg_count < 1) || (args->arg_count > 2)){
     strncpy(err_msg, "recv_mesg(): wrong number of arguments",MYSQL_ERRMSG_SIZE);
     return 1;
   }
   args->arg_type[0] = INT_RESULT;
 
+  if(args->arg_count == 2) {
+    /* Options */
+    f->options = malloc(sizeof(all_api_options));
+    initialize_options(f->options);
+  }
   if(args->args[0]) {
     /* The handle is given as a constant */
     slot = *((long long *) args->args[0]);
@@ -615,7 +662,22 @@ my_bool recv_mesg_init(UDF_INIT *initid, UDF_ARGS *args, char *err_msg)
       return 1;
     }
   }
-  
+  if(args->args[1]) {
+    /* Options are given as a constant */    
+    r = parse_api_options(f->options, OPF_timeout, & (f->set_options), args->args[1]);
+    if(r) {
+      OPTIONS_ERROR("recv_mesg",r);
+      return 1;
+    }
+    if(f->set_options & OPF_timeout)
+      if(! ascii_to_timeval(f->options[OP_timeout].value,
+                            f->options[OP_timeout].value_len, & (f->timeval))) 
+      {
+        strncpy(err_msg,"recv_mesg(): invalid timeout", MYSQL_ERRMSG_SIZE);      
+        return 1;
+      }
+  }
+    
   return 0;
 }
 
@@ -631,7 +693,8 @@ char * recv_mesg(UDF_INIT *initid, UDF_ARGS *args, char *result,
   int16 mess_type;
   char *msg;
   long long slot; 
-
+  option_list *Options = NULL;
+  unsigned int set_options;
   
   /* The "result" buffer passed in is 255 bytes long.  If your result
     fits in this, you don't have to worry about allocating.  */
@@ -644,10 +707,26 @@ char * recv_mesg(UDF_INIT *initid, UDF_ARGS *args, char *result,
   }
   slot = *((long long *) args->args[0]);
   if( bad_recv_slot(slot)) 
-      goto error_return;
+    goto error_return;
   spread_pool[slot].status = SPREAD_CTX_RECV_MESG;      
   max_groups = 1;
   
+  if(args->arg_count == 2) {                                /* timeout option */
+    Options = (option_list *) initid->ptr;
+    if(STORE_SET_OPTIONS)
+      set_options = STORE_SET_OPTIONS;
+    else {
+      initialize_options(Options);
+      if(parse_api_options(Options, OPF_timeout, &set_options, args->args[0])) {
+        *error = 1;
+        return 0;
+      }
+    }
+    if(set_options & OPF_timeout) {
+    
+    
+    }
+  }
   get_message:  
   svctype = 0;
 
@@ -705,10 +784,14 @@ char * recv_mesg(UDF_INIT *initid, UDF_ARGS *args, char *result,
 }
 
 
+/* SQL track_memberships(), 
+   returns an integer slot number from the receive pool
+*/
 my_bool track_memberships_init(UDF_INIT *initid, UDF_ARGS *args, char *err_msg)
 {
   int s, err;
 
+  initid->maybe_null =  0;
   if(args->arg_count != 1) {
     strncpy(err_msg, "track_memberships(): wrong number of arguments",MYSQL_ERRMSG_SIZE);
     return 1;
@@ -780,10 +863,13 @@ long long track_memberships(UDF_INIT *initid, UDF_ARGS *args,
 }  
 
 
+/* SQL leave_mesg_group 
+   returns 1 for success, 0 for failure, NULL if argument is NULL
+*/
 my_bool leave_mesg_group_init(UDF_INIT *initid, UDF_ARGS *args, char *err_msg)
 {
   long long slot;
-    
+  
   if(args->arg_count != 1) {
     strncpy(err_msg,"leave_mesg_group(): wrong number of arguments",
             MYSQL_ERRMSG_SIZE);
@@ -825,10 +911,14 @@ long long leave_mesg_group(UDF_INIT *initid, UDF_ARGS *args,
   if(ret) *error = 1;
   else
     group_table_op(OP_DELETE, & private_names, slot, spread_pool[slot].name.private);
-
     
   return (long long) (! *error);
 }  
+
+
+/* SQL mesg_handle
+   returns integer handle matching query, or NULL
+*/
 
 my_bool mesg_handle_init(UDF_INIT *initid, UDF_ARGS *args, char *err_msg)
 {
@@ -836,6 +926,7 @@ my_bool mesg_handle_init(UDF_INIT *initid, UDF_ARGS *args, char *err_msg)
   option_list *Options = NULL;
   unsigned int set_options;
      
+  initid->maybe_null = 1;
   if(args->arg_count != 1) {
     strncpy(err_msg,"mesg_handle(): wrong number of arguments",
             MYSQL_ERRMSG_SIZE);
@@ -847,7 +938,6 @@ my_bool mesg_handle_init(UDF_INIT *initid, UDF_ARGS *args, char *err_msg)
   args->arg_type[0] = STRING_RESULT;
   args->lengths[0] = 512;
   initid->ptr = (char *) Options;
-  initid->maybe_null = 1;
  
   if(args->args[0]) { 
     r = parse_api_options(Options, (OPF_name | OPF_join | OPF_track),
@@ -1022,7 +1112,7 @@ long long is_a_member( struct membership *memb, sequence_number seq, char *membe
        which you have requested in SP_connect().  We accept either form,
        and we do this by:
        skipping over the first character of p (known to be a '#')
-       skipping the first character if member if it is a '#'
+       skipping the first character of member if it is a '#'
        doing a leftmost-substring match: does "p" begin with "member"?
     */
 	
