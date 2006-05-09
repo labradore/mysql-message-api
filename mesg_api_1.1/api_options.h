@@ -63,6 +63,6 @@ enum options_bit_flags {
 #define STORE_SET_OPTIONS Options[N_API_OPTIONS].value_len 
 
 #define OPTIONS_ERROR(func,err)  \
-  snprintf(err_msg, MYSQL_ERRMSG_SIZE, "%s(): invalid %s", \
-  func, ( err == PARS_ILLEGAL_OPTION ? "option" : "syntax") )
+  snprintf(err_msg, MYSQL_ERRMSG_SIZE, "%s(): invalid option %s", \
+  func, ( err == PARS_ILLEGAL_OPTION ? "" : "syntax") )
 

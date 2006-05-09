@@ -627,15 +627,20 @@ int ascii_to_timeval(char *s, int len, struct timeval *tv) {
 }
 
 
+/* SQL recv_mesg takes a message handle and an (optional) options string.
+   It usually returns a message string.
+   It can return NULL in three cases:
+   It received a self-leave message, the supplied handle was NULL, 
+   or a timeout was supplied, and it the call timed out before a message
+   was available.
+*/
 my_bool recv_mesg_init(UDF_INIT *initid, UDF_ARGS *args, char *err_msg)
 {
-  long long slot;
+  long long slot = 0;
   opt_parser_return r;
   struct message_function_init *f;
 
   initid->maybe_null = 1;
-  f = calloc(1,sizeof(struct message_function_init));
-  initid->ptr = (char *) f;              
   
   if((args->arg_count < 1) || (args->arg_count > 2)){
     strncpy(err_msg, "recv_mesg(): wrong number of arguments",MYSQL_ERRMSG_SIZE);
@@ -643,11 +648,6 @@ my_bool recv_mesg_init(UDF_INIT *initid, UDF_ARGS *args, char *err_msg)
   }
   args->arg_type[0] = INT_RESULT;
 
-  if(args->arg_count == 2) {
-    /* Options */
-    f->options = malloc(sizeof(all_api_options));
-    initialize_options(f->options);
-  }
   if(args->args[0]) {
     /* The handle is given as a constant */
     slot = *((long long *) args->args[0]);
@@ -662,20 +662,38 @@ my_bool recv_mesg_init(UDF_INIT *initid, UDF_ARGS *args, char *err_msg)
       return 1;
     }
   }
-  if(args->args[1]) {
-    /* Options are given as a constant */    
-    r = parse_api_options(f->options, OPF_timeout, & (f->set_options), args->args[1]);
-    if(r) {
-      OPTIONS_ERROR("recv_mesg",r);
-      return 1;
-    }
-    if(f->set_options & OPF_timeout)
-      if(! ascii_to_timeval(f->options[OP_timeout].value,
-                            f->options[OP_timeout].value_len, & (f->timeval))) 
-      {
-        strncpy(err_msg,"recv_mesg(): invalid timeout", MYSQL_ERRMSG_SIZE);      
+  if(args->arg_count == 2) { /* Options */
+    args->arg_type[1] = STRING_RESULT;
+    f = calloc(1,sizeof(struct message_function_init));
+    f->options = malloc(sizeof(all_api_options));
+    initialize_options(f->options);
+    initid->ptr = (char *) f; 
+    if(args->args[1]) {
+      /* Options are given as a constant */ 
+      if(slot) {
+        if(spread_pool[slot].mbox > FD_SETSIZE) {
+        /* This is a very strange error, but MySQL could use a lot of open file
+          descriptors before Spread opens a connection, so I think it is possible 
+        */
+          strncpy(err_msg,"recv_mesg(): cannot use timeout, FD_SETSIZE is too small", 
+                  MYSQL_ERRMSG_SIZE);      
+          return 1;
+        }
+      }  
+      r = parse_api_options(f->options, OPF_timeout, & (f->set_options), args->args[1]);
+      if(r) {
+        OPTIONS_ERROR("recv_mesg",r);
         return 1;
       }
+      if(f->set_options & OPF_timeout) {
+        if(! ascii_to_timeval(f->options[OP_timeout].value,
+                              f->options[OP_timeout].value_len, & (f->timeval))) 
+        {
+          strncpy(err_msg,"recv_mesg(): invalid timeout", MYSQL_ERRMSG_SIZE);      
+          return 1;
+        }
+      }
+    }
   }
     
   return 0;
@@ -692,9 +710,10 @@ char * recv_mesg(UDF_INIT *initid, UDF_ARGS *args, char *result,
   int max_groups, ngroups, true_length, max_len;
   int16 mess_type;
   char *msg;
-  long long slot; 
-  option_list *Options = NULL;
-  unsigned int set_options;
+  long long slot;
+  struct message_function_init *f; 
+  my_bool use_timeout = 0;
+  fd_set readfds, nullfds;
   
   /* The "result" buffer passed in is 255 bytes long.  If your result
     fits in this, you don't have to worry about allocating.  */
@@ -711,22 +730,39 @@ char * recv_mesg(UDF_INIT *initid, UDF_ARGS *args, char *result,
   spread_pool[slot].status = SPREAD_CTX_RECV_MESG;      
   max_groups = 1;
   
-  if(args->arg_count == 2) {                                /* timeout option */
-    Options = (option_list *) initid->ptr;
-    if(STORE_SET_OPTIONS)
-      set_options = STORE_SET_OPTIONS;
-    else {
-      initialize_options(Options);
-      if(parse_api_options(Options, OPF_timeout, &set_options, args->args[0])) {
+  if((args->arg_count == 2) && (args->args[1])) { /* timeout option */
+    f = (struct message_function_init *) initid->ptr;
+    if(! f->set_options)
+    {
+      initialize_options(f->options);
+      if(parse_api_options(f->options, OPF_timeout, & (f->set_options), args->args[1])) {
         *error = 1;
         return 0;
       }
     }
-    if(set_options & OPF_timeout) {
-    
-    
+    if(f->set_options & OPF_timeout) {
+      if(! ascii_to_timeval(f->options[OP_timeout].value,
+                            f->options[OP_timeout].value_len, & (f->timeval))) {
+        *error = 1;
+        return 0;
+      }
+    use_timeout = 1;
     }
   }
+
+  if(use_timeout) {
+    FD_ZERO(& readfds);
+    FD_ZERO(& nullfds);
+    FD_SET( spread_pool[slot].mbox , & readfds);
+    
+    if( ! select ( spread_pool[slot].mbox + 1, & readfds, & nullfds, & readfds, 
+                   & f->timeval)) {
+      /* timeout expired; no message. */
+      *is_null = 1;
+      return NULL;
+    }
+  }
+
   get_message:  
   svctype = 0;
 
