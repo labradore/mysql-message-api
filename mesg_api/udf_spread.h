@@ -18,6 +18,7 @@ This product uses software developed by Spread Concepts LLC for use in the
 Spread toolkit. For more information about Spread see http://www.spread.org
 */
 
+#define MESSAGE_API_VERSION "1.0 (build 45)"
 
 /* 
 The default SPREAD_NAME of "4803" will connect to a Spread daemon running 
@@ -95,7 +96,6 @@ run a Spread daemon on each MySQL Server.
 #include <stdarg.h>
 
 #include <sp.h>
-
 
 #define udf_assert(x) { \
   (x) || fprintf(stderr,"!! Message UDF assertion failed at line %d !! \n",__LINE__);\

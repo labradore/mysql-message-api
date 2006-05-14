@@ -518,7 +518,7 @@ sequence_number delivery_broker(outbox_tag op, struct outbox *outbox, int16 tag,
  The handler must be passed to recv_message(), and it must be closed
  with leave_mesg_group().
  leave_mesg_group() maps to SP_leave(), but the socket is not disconnected
- until you call recv_mesg() up through your final message until it returns
+ until you call recv_mesg() up through your final message and it returns
  NULL.
 */
 
@@ -579,10 +579,10 @@ long long join_mesg_group(UDF_INIT *initid, UDF_ARGS *args,
 
 static inline void disconnect_recv_slot(int slot) {
   pthread_mutex_lock(&recv_pool_mutex);
-  SP_disconnect(spread_pool[slot].mbox);
-  spread_pool[slot].status = SPREAD_CTX_FREE;
-  spread_pool[slot].mbox = 0;
-  spread_pool[slot].n.recv = 0;
+    SP_disconnect(spread_pool[slot].mbox);
+    spread_pool[slot].status = SPREAD_CTX_FREE;
+    spread_pool[slot].mbox = 0;
+    spread_pool[slot].n.recv = 0;
   pthread_mutex_unlock(&recv_pool_mutex);
 }
 
@@ -1407,6 +1407,8 @@ int group_table_op(enum hash_op op, struct group_table *table,
 
 
 void status__global(char *p, int *sz) {
+  report(p,sz,"\n                                     MySQL Message API " 
+         MESSAGE_API_VERSION);
   report(p,sz,"\n=================  Globals  \n");
   report(p,sz,"  %d message handles in send pool, %d handles in receive pool\n",
          SEND_POOL_SIZE, RECV_POOL_SIZE);
