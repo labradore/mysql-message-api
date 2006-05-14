@@ -259,7 +259,6 @@ my_bool send_mesg_init(UDF_INIT *initid, UDF_ARGS *args, char *err_msg)
   }
   /* To do: set maybe_null and const_item in all other functions */
   initid->maybe_null = 0; 
-  initid->const_item = 1;
 
   if((args->arg_count < 2) || (args->arg_count > 3 )) {
     strncpy(err_msg,"send_mesg(): wrong number of arguments",MYSQL_ERRMSG_SIZE);
