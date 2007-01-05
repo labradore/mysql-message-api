@@ -13,10 +13,9 @@
    * from the "Downloads" page here.  Binary distributions are also available for some platforms. 
 
  === Run _configure_, _make_, and _make install_ ===
-   * This will create a file called _message_api.so_ and install it in /usr/local/lib/.  (However, note that some Linux distributions, which do not use the GNU dynamic linker, require you to move the file from /usr/local/lib/ into /usr/lib)
+   * This will create a file called {{{_message_api.so}}} and install it in /usr/local/lib/.  (However, note that some Linux distributions, which do not use the GNU dynamic linker, require you to move the file from /usr/local/lib/ into /usr/lib)
 
 === Create the SQL functions ===
    * Execute the {{{create_functions.sql}}} script in your MySQL server
-
 
 
