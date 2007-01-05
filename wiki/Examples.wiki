@@ -90,7 +90,7 @@ CREATE PROCEDURE kill_listener()
 == Example 3: XML ==
 The message sent in example 2 above is encoded in a very simple format, where the user-id and link count are separated by a space. This format is efficient, but not really robust.
 
-If something compels you to send XML messages, then MySQL 5.1 provides an _ExtractValue_ function which can unpack the XML messages using XPath queries. _ExtractValue_ first appeared in MySQL 5.1.5, so this is not available in MySQL 5.0. I will illustrate the possibilities using a simple one-tag XML message format.
+If something compels you to send XML messages, then MySQL 5.1 provides an _!ExtractValue_ function which can unpack the XML messages using XPath queries. _!ExtractValue_ first appeared in MySQL 5.1.5, so this is not available in MySQL 5.0. I will illustrate the possibilities using a simple one-tag XML message format.
 
 {{{
   <LinkCount user="15" count="8" />
