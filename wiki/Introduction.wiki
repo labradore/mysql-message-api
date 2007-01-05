@@ -1,4 +1,4 @@
-# Overview of the Message API
+#summary Overview of the Message API
 
 = MySQL Message API =
 
