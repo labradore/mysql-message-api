@@ -3,19 +3,25 @@
 = Installing the Message API =
 
 
- ===Install MySQL===
+===Install MySQL===
    * The {{{mysql_config}}} script and MySQL's C and C++ header files are required for building the Message API.
 
- ===Install and configure Spread===
+===Install and configure Spread===
    * It's available from [http://www.spread.org/].  Before using the Message API, you should have a working _spread.conf_ file and running Spread daemons, and you should be able to use the _spuser_ utility to send a test message.
 
- ===Download and unpack the Message API source distribution===
+===Download and unpack the Message API source distribution===
    * from the "Downloads" page here.  Binary distributions are also available for some platforms. 
 
- === Run _configure_, _make_, and _make install_ ===
-   * This will create a file called {{{_message_api.so}}} and install it in /usr/local/lib/.  (However, note that some Linux distributions, which do not use the GNU dynamic linker, require you to move the file from /usr/local/lib/ into /usr/lib)
+=== Run "configure", "make", and "make install" ===
+   * This will create a file called {{{message_api.so}}} and install it in /usr/local/lib/.  (However, note that some Linux distributions, which do not use the GNU dynamic linker, require you to move the file from /usr/local/lib/ into /usr/lib)
 
 === Create the SQL functions ===
    * Execute the {{{create_functions.sql}}} script in your MySQL server
+
+
+
+
+
+
 
 
