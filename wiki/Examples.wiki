@@ -6,7 +6,7 @@
 
 http://messagequeue.lenoxway.net/mesg-ex1.jpg
 
-The database server and all of the applications are members of a Spread segment, and the applications have joined a group called "inserts." Whenever any client creates a new row in the table _xyz table_, the _notify_ trigger fires, sending a message to all of the applications.
+The database server and all of the applications are members of a Spread segment, and the applications have joined a group called "inserts." Whenever any client creates a new row in the table !xyz_table, the _notify_ trigger fires, sending a message to all of the applications.
 
 ----
 
@@ -123,4 +123,3 @@ BEGIN
   SET link_count = ExtractValue(message,"/LinkCount/@count");
 END
 }}}
-
