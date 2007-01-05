@@ -1,6 +1,6 @@
 #summary Examples of the Message API in use
 
-*Wiki: * [Introduction] | [Spread] | [Examples]
+*Wiki: * [Introduction] | [SpreadToolkit] | [Examples]
 
 
 = Examples =
@@ -128,5 +128,4 @@ BEGIN
   SET link_count = ExtractValue(message,"/LinkCount/@count");
 END
 }}}
-
 
