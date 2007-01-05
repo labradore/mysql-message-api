@@ -1,4 +1,4 @@
-# About the Spread Toolkit
+#summary About the Spread Toolkit
 
 = Spread =
 
@@ -13,5 +13,4 @@ The Message API depends on Spread in several important ways:
  * The UDFs must be linked against the thread-safe Spread library ( libtspread in Spread 3.17, or libspread in Spread 4.0).
  * The Message APIs require a Spread daemon to be running on each MySQL server.
  * The Spread daemons must be configured, using spread.conf files, to define the domain for group membership.
-
 
