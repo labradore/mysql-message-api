@@ -1,8 +1,11 @@
 #summary Examples of the Message API in use
 
+*Wiki: * [Introduction] | [Spread] | [Examples]
+
+
 = Examples =
 
-==Example 1: Notifications==
+==Example 1: Sending Notifications ==
 
 http://messagequeue.lenoxway.net/mesg-ex1.jpg
 
@@ -10,7 +13,8 @@ The database server and all of the applications are members of a Spread segment,
 
 ----
 
-== Example 2: Large Web Application ==
+
+== Example 2: Large Web Application: database servers that send _and_ receive ==
 
 http://messagequeue.lenoxway.net/mesg-ex2.jpg
 
@@ -87,6 +91,7 @@ CREATE PROCEDURE kill_listener()
 
 ----
 
+
 == Example 3: XML ==
 The message sent in example 2 above is encoded in a very simple format, where the user-id and link count are separated by a space. This format is efficient, but not really robust.
 
@@ -123,3 +128,5 @@ BEGIN
   SET link_count = ExtractValue(message,"/LinkCount/@count");
 END
 }}}
+
+
