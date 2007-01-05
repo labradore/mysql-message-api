@@ -16,7 +16,7 @@ http://messagequeue.lenoxway.net/mesg-ex2.jpg
 
 At a large social networking web site, one server holds a "links" table that records links between users (a.k.a. "friends lists"). Another set of servers contains detailed membership records for each user; this data set is partitioned across many database servers, with one server for every million users. Every user record includes a "friend count" that records how many other people a person is linked to.
 
-We can use the message API to maintain the friend count. On the Friends database server, a SQL stored procedure called {{{_send_link_count()}}} publishes a user's friend count to a message group named "{{{user_links}}}."
+We can use the message API to maintain the friend count. On the Friends database server, a SQL stored procedure called {{{send_link_count()}}} publishes a user's friend count to a message group named "{{{user_links}}}."
 
 {{{
 CREATE PROCEDURE send_link_count(user_id INT)
@@ -95,7 +95,7 @@ If something compels you to send XML messages, then MySQL 5.1 provides an _Extra
 {{{
   <LinkCount user="15" count="8" />
 }}}
-To build the message, use a function _pack_link_count_XML_ on the links database server. This involves nothing more than assembling a string, so concat() does all the real work.
+To build the message, use a function {{{pack_link_count_XML}}} on the links database server. This involves nothing more than assembling a string, so concat() does all the real work.
 
 {{{
 CREATE FUNCTION pack_link_count_XML(user_id INT, link_count INT) 
@@ -110,7 +110,7 @@ DETERMINISTIC NO SQL
  END
 }}}
  
-Then, on the user database servers (the receiving end), the _unpack_links_message_ procedure above can be replaced with one that relies on ExtractValue to unpack the XML. This requires two XPath queries, "/LinkCount/@user" to get the user id (i.e. the "user" attribute of the tag) and "/LinkCount/@count" to get the link count.
+Then, on the user database servers (the receiving end), the {{{unpack_links_message}}} procedure above can be replaced with one that relies on ExtractValue to unpack the XML. This requires two XPath queries, "{{{/LinkCount/@user}}}" to get the user id (i.e. the "user" attribute of the tag) and "{{{/LinkCount/@count}}}" to get the link count.
 
 {{{
 CREATE PROCEDURE unpack_link_count_XML(
