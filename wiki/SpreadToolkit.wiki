@@ -1,5 +1,7 @@
 #summary About the Spread Toolkit
 
+*wiki: * [Introduction] | SpreadToolkit | [Examples]
+
 = Spread =
 
 The Message API is built using a high-performance Open Source messaging framework called the Spread Toolkit, which is available from http://www.spread.org/, with commercial support and services available from [http://www.spreadconcepts.com Spread Concepts LLC]. Spread supplies a foundation for a reliable group communications system, and the Message API provides a simple bridge allowing MySQL servers to join that system.
@@ -13,4 +15,3 @@ The Message API depends on Spread in several important ways:
  * The UDFs must be linked against the thread-safe Spread library ( libtspread in Spread 3.17, or libspread in Spread 4.0).
  * The Message APIs require a Spread daemon to be running on each MySQL server.
  * The Spread daemons must be configured, using spread.conf files, to define the domain for group membership.
-
