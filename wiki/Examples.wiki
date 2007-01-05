@@ -36,7 +36,7 @@ CREATE TRIGGER send_count
  FOR EACH ROW
   CALL send_link_count(new.link_from);
 }}}
-The send_link_count() procedure above used concat() to put together a two-part message containing both the user_id and number of friends. A simple procedure on the user database servers unpacks the two-part message.
+The send\_link\_count() procedure above used concat() to put together a two-part message containing both the user_id and number of friends. A simple procedure on the user database servers unpacks the two-part message.
 
 {{{
 CREATE PROCEDURE unpack_links_message(
@@ -123,3 +123,4 @@ BEGIN
   SET link_count = ExtractValue(message,"/LinkCount/@count");
 END
 }}}
+
