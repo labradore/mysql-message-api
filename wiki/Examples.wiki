@@ -16,7 +16,7 @@ http://messagequeue.lenoxway.net/mesg-ex2.jpg
 
 At a large social networking web site, one server holds a "links" table that records links between users (a.k.a. "friends lists"). Another set of servers contains detailed membership records for each user; this data set is partitioned across many database servers, with one server for every million users. Every user record includes a "friend count" that records how many other people a person is linked to.
 
-We can use the message API to maintain the friend count. On the Friends database server, a SQL stored procedure called _send_link_count()_ publishes a user's friend count to a message group named "user_links."
+We can use the message API to maintain the friend count. On the Friends database server, a SQL stored procedure called {{{_send_link_count()}}} publishes a user's friend count to a message group named "{{{user_links}}}."
 
 {{{
 CREATE PROCEDURE send_link_count(user_id INT)
@@ -36,7 +36,7 @@ CREATE TRIGGER send_count
  FOR EACH ROW
   CALL send_link_count(new.link_from);
 }}}
-The send\_link\_count() procedure above used concat() to put together a two-part message containing both the user_id and number of friends. A simple procedure on the user database servers unpacks the two-part message.
+The {{{send_link_count()}}} procedure above used concat() to put together a two-part message containing both the user-id and number of friends. A simple procedure on the user database servers unpacks the two-part message.
 
 {{{
 CREATE PROCEDURE unpack_links_message(
@@ -51,7 +51,7 @@ CREATE PROCEDURE unpack_links_message(
   SELECT SUBSTR(message,p+1) INTO link_count;
  END
 }}}
-Also on the user database servers, the long-running stored procedure links_listener() joins the message group, parses each message, and updates the user table.
+Also on the user database servers, the long-running stored procedure {{{links_listener()}}} joins the message group, parses each message, and updates the user table.
 
 {{{
 CREATE PROCEDURE links_listener()
@@ -88,7 +88,7 @@ CREATE PROCEDURE kill_listener()
 ----
 
 == Example 3: XML ==
-The message sent in example 2 above is encoded in a very simple format, where the user_id and link count are separated by a space. This format is efficient, but not really robust.
+The message sent in example 2 above is encoded in a very simple format, where the user-id and link count are separated by a space. This format is efficient, but not really robust.
 
 If something compels you to send XML messages, then MySQL 5.1 provides an _ExtractValue_ function which can unpack the XML messages using XPath queries. _ExtractValue_ first appeared in MySQL 5.1.5, so this is not available in MySQL 5.0. I will illustrate the possibilities using a simple one-tag XML message format.
 
