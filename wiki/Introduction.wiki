@@ -1,4 +1,5 @@
 #summary Overview of the Message API
+#labels Featured
 
 = MySQL Message API =
 
